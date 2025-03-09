@@ -7,31 +7,46 @@ const { verifyToken } = require('../middleware/auth');
 // Telegram authentication middleware
 const authenticateTelegram = async (req, res, next) => {
   try {
-    const { telegram_id, username, auth_date, hash } = req.body;
+    console.log('Telegram authentication request received:', req.body);
+    const { telegram_id, username, first_name, last_name, auth_date } = req.body;
     
-    // In a real implementation, you would verify the hash with Telegram's data
-    // For simplicity, we're just checking if the telegram_id exists
+    // Validate required fields
     if (!telegram_id) {
-      return res.status(401).json({ error: 'Invalid authentication data' });
+      console.error('Missing telegram_id in authentication request');
+      return res.status(401).json({ error: 'Invalid authentication data: telegram_id is required' });
     }
+    
+    console.log(`Processing authentication for Telegram user ${telegram_id} (${username || 'unnamed'})`);
     
     // Check if user exists
     let user = await getOne('SELECT * FROM users WHERE telegram_id = ?', [telegram_id]);
     
     // If user doesn't exist, create a new one
     if (!user) {
+      console.log(`Creating new user for Telegram ID: ${telegram_id}`);
       const result = await runQuery(
-        'INSERT INTO users (telegram_id, username, last_login) VALUES (?, ?, ?)',
-        [telegram_id, username, new Date().toISOString()]
+        'INSERT INTO users (telegram_id, username, first_name, last_name, last_login) VALUES (?, ?, ?, ?, ?)',
+        [telegram_id, username || `user_${telegram_id}`, first_name || '', last_name || '', new Date().toISOString()]
       );
       
-      user = await getOne('SELECT * FROM users WHERE id = ?', [result.id]);
+      user = await getOne('SELECT * FROM users WHERE id = ?', [result.lastID]);
+      console.log(`New user created with ID: ${user.id}`);
     } else {
-      // Update last login
+      // Update user information and last login
+      console.log(`Updating existing user: ${user.id} (Telegram ID: ${telegram_id})`);
       await runQuery(
-        'UPDATE users SET last_login = ? WHERE id = ?',
-        [new Date().toISOString(), user.id]
+        'UPDATE users SET username = ?, first_name = ?, last_name = ?, last_login = ? WHERE id = ?',
+        [
+          username || user.username || `user_${telegram_id}`, 
+          first_name || user.first_name || '', 
+          last_name || user.last_name || '', 
+          new Date().toISOString(), 
+          user.id
+        ]
       );
+      
+      // Refresh user data after update
+      user = await getOne('SELECT * FROM users WHERE id = ?', [user.id]);
     }
     
     // Generate JWT token
@@ -40,6 +55,8 @@ const authenticateTelegram = async (req, res, next) => {
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
+    
+    console.log(`Authentication successful for user ID: ${user.id}, token generated`);
     
     req.user = user;
     req.token = token;

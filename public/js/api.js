@@ -77,6 +77,7 @@ class API {
     async request(endpoint, method = 'GET', data = null) {
         try {
             const url = `${this.baseUrl}${endpoint}`;
+            console.log(`API Request: ${method} ${url}`);
             
             // Add authorization header if token exists
             const options = {
@@ -93,6 +94,11 @@ class API {
                 options.body = JSON.stringify(data);
             }
             
+            console.log(`Request headers:`, options.headers);
+            if (options.body) {
+                console.log(`Request body:`, options.body.length > 1000 ? options.body.substring(0, 1000) + '...' : options.body);
+            }
+            
             // Add timeout to fetch request
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
@@ -101,19 +107,38 @@ class API {
             const response = await fetch(url, options);
             clearTimeout(timeoutId);
             
+            console.log(`Response status: ${response.status} ${response.statusText}`);
+            
             // Handle authentication errors
             if (response.status === 401) {
+                console.error('Authentication failed (401 Unauthorized)');
                 this.clearToken();
-                throw new Error('Authentication failed. Please log in again.');
+                
+                // Try to re-authenticate with Telegram if available
+                if (window.Telegram?.WebApp?.initDataUnsafe?.user && !endpoint.includes('/auth/login')) {
+                    console.log('Attempting to re-authenticate with Telegram...');
+                    try {
+                        await this.authenticateTelegram();
+                        console.log('Re-authentication successful, retrying original request');
+                        return this.request(endpoint, method, data);
+                    } catch (authError) {
+                        console.error('Re-authentication failed:', authError);
+                        throw new Error('Authentication failed. Please log in again.');
+                    }
+                } else {
+                    throw new Error('Authentication failed. Please log in again.');
+                }
             }
             
             // Parse response
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 const responseData = await response.json();
+                console.log(`Response data:`, responseData);
                 
                 if (!response.ok) {
                     const errorMessage = responseData.error || responseData.message || `API request failed with status ${response.status}`;
+                    console.error(`API error: ${errorMessage}`);
                     throw new Error(errorMessage);
                 }
                 
@@ -121,6 +146,7 @@ class API {
             } else {
                 if (!response.ok) {
                     const text = await response.text();
+                    console.error(`API error (non-JSON): ${text || response.status}`);
                     throw new Error(text || `API request failed with status ${response.status}`);
                 }
                 
@@ -129,6 +155,7 @@ class API {
         } catch (error) {
             // Handle network errors with retry logic
             if (error.name === 'AbortError') {
+                console.error('Request timed out');
                 throw new Error('Request timed out. Please check your internet connection and try again.');
             }
             
@@ -185,32 +212,47 @@ class API {
 
     /**
      * Authenticate with Telegram
-     * @param {string} initData - Telegram init data
+     * @param {string} initData - Telegram init data (optional)
      */
-    async authenticateTelegram(initData) {
+    async authenticateTelegram(initData = null) {
         // Parse Telegram WebApp init data
         let telegramUser = {};
         
         try {
             if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
                 const user = window.Telegram.WebApp.initDataUnsafe.user;
+                console.log('Extracting Telegram user data:', user);
+                
                 telegramUser = {
                     telegram_id: user.id.toString(),
                     username: user.username || `user_${user.id}`,
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    auth_date: Math.floor(Date.now() / 1000),
-                    hash: 'placeholder' // In a real app, this would be verified on the server
+                    first_name: user.first_name || '',
+                    last_name: user.last_name || '',
+                    auth_date: Math.floor(Date.now() / 1000)
                 };
+                
+                console.log('Prepared user data for authentication:', telegramUser);
+            } else {
+                console.error('No Telegram WebApp user data available');
+                throw new Error('No Telegram user data available');
             }
         } catch (error) {
             console.error('Failed to parse Telegram WebApp data:', error);
+            throw error;
         }
         
+        console.log('Sending authentication request to server');
         const result = await this.request('/auth/login', 'POST', telegramUser);
+        console.log('Authentication response:', result);
+        
         if (result.token) {
+            console.log('Setting token from authentication response');
             this.setToken(result.token);
+        } else {
+            console.error('No token received from server');
+            throw new Error('Authentication failed - no token received');
         }
+        
         return result;
     }
 

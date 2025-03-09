@@ -28,15 +28,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             webApp.ready();
             
             // Handle authentication
-            const initData = webApp.initData;
-            if (initData) {
-                try {
-                    await api.authenticateTelegram(initData);
-                    console.log('Authenticated with Telegram');
-                } catch (error) {
-                    console.error('Error authenticating with Telegram:', error);
-                    ui.showError('Failed to authenticate with Telegram');
+            try {
+                console.log('Attempting Telegram authentication...');
+                // Use the WebApp user data directly instead of initData
+                if (webApp.initDataUnsafe && webApp.initDataUnsafe.user) {
+                    const user = webApp.initDataUnsafe.user;
+                    console.log('Telegram user data found:', user);
+                    
+                    // Authenticate with user data
+                    await api.authenticateTelegram();
+                    console.log('Authenticated with Telegram successfully');
+                    
+                    // Reload UI data after authentication
+                    await ui.loadUserData();
+                    await ui.loadPlanets();
+                } else {
+                    console.error('No Telegram user data found in WebApp');
+                    ui.showError('Failed to get Telegram user data');
                 }
+            } catch (error) {
+                console.error('Error authenticating with Telegram:', error);
+                ui.showError('Failed to authenticate with Telegram');
             }
             
             // Set up back button handler
