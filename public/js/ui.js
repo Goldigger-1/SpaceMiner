@@ -934,7 +934,7 @@ class UI {
         } catch (error) {
             this.hideLoadingScreen();
             console.error('Error purchasing spins:', error);
-            this.showError(error.message || 'Failed to purchase spins');
+            this.showError('Failed to purchase spins');
         }
     }
 
@@ -1983,6 +1983,42 @@ class UI {
             this.hideLoadingScreen();
             this.showError('Failed to logout');
         }
+    }
+
+    /**
+     * Handle window resize events
+     * Adjusts UI elements based on screen size
+     */
+    handleResize() {
+        // Get current window dimensions
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        // Adjust UI based on screen size
+        if (width < 768) {
+            // Mobile layout adjustments
+            document.body.classList.add('mobile-view');
+            document.body.classList.remove('desktop-view');
+        } else {
+            // Desktop layout adjustments
+            document.body.classList.add('desktop-view');
+            document.body.classList.remove('mobile-view');
+        }
+        
+        // Adjust fortune wheel canvas if it exists
+        if (this.fortuneWheelCanvas) {
+            const containerWidth = this.fortuneWheelCanvas.parentElement.clientWidth;
+            const size = Math.min(containerWidth * 0.9, 400);
+            this.fortuneWheelCanvas.width = size;
+            this.fortuneWheelCanvas.height = size;
+            
+            // Redraw wheel if the fortune wheel module is initialized
+            if (typeof fortuneWheel !== 'undefined' && fortuneWheel.drawWheel) {
+                fortuneWheel.drawWheel();
+            }
+        }
+        
+        console.log(`Window resized to ${width}x${height}, UI adjusted`);
     }
 }
 
