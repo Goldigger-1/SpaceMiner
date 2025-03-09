@@ -26,7 +26,15 @@ const bot = new TelegramBot(token, { polling: true });
 // Bot commands
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  const webAppUrl = process.env.WEBAPP_URL || `http://localhost:3000`;
+  
+  // For Telegram Web App, URL must be HTTPS
+  const webAppUrl = process.env.WEBAPP_URL;
+  
+  if (!webAppUrl || !webAppUrl.startsWith('https://')) {
+    bot.sendMessage(chatId, 'Welcome to Space Miner! The game is currently being set up. Please try again later.');
+    console.log('Error: WEBAPP_URL must be an HTTPS URL for Telegram Web App buttons.');
+    return;
+  }
   
   bot.sendMessage(chatId, 'Welcome to Space Miner! Click the button below to start your galactic exploration adventure.', {
     reply_markup: {
