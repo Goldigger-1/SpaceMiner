@@ -11,7 +11,7 @@ router.get('/', verifyToken, async (req, res) => {
       SELECT id, telegram_id, username, currency, premium_currency, created_at
       FROM users
       WHERE id = ?
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -36,7 +36,7 @@ router.get('/', verifyToken, async (req, res) => {
         SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed_expeditions
       FROM expeditions
       WHERE user_id = ? AND status = 'completed'
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (expeditionStats) {
       stats.totalExpeditions = expeditionStats.total_expeditions;
@@ -54,7 +54,7 @@ router.get('/', verifyToken, async (req, res) => {
       WHERE ui.user_id = ?
       GROUP BY r.id
       ORDER BY total_collected DESC
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (resourceStats.length > 0) {
       stats.favoriteResource = resourceStats[0];
@@ -68,7 +68,7 @@ router.get('/', verifyToken, async (req, res) => {
       FROM user_inventory ui
       JOIN resources r ON ui.resource_id = r.id
       WHERE ui.user_id = ?
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (valueStats) {
       stats.totalValueCollected = valueStats.total_value || 0;
@@ -85,7 +85,7 @@ router.get('/', verifyToken, async (req, res) => {
       GROUP BY p.id
       ORDER BY visit_count DESC
       LIMIT 1
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (planetStats) {
       stats.favoritePlanet = planetStats;
@@ -100,7 +100,7 @@ router.get('/', verifyToken, async (req, res) => {
       JOIN resources r ON ui.resource_id = r.id
       WHERE ui.user_id = ?
       ORDER BY r.rarity DESC, r.name
-    `, [req.userId]);
+    `, [req.user.id]);
     
     // Get user upgrades
     const upgrades = await getAll(`
@@ -111,7 +111,7 @@ router.get('/', verifyToken, async (req, res) => {
       JOIN shop_items si ON uu.item_id = si.id
       WHERE uu.user_id = ? AND uu.active = 1
       ORDER BY uu.purchase_date DESC
-    `, [req.userId]);
+    `, [req.user.id]);
     
     // Get user ranking
     const currentDate = new Date();
@@ -124,7 +124,7 @@ router.get('/', verifyToken, async (req, res) => {
         (SELECT COUNT(*) FROM leaderboard l2 WHERE l2.month = ? AND l2.year = ? AND l2.score > l.score) + 1 as rank
       FROM leaderboard l
       WHERE l.user_id = ? AND l.month = ? AND l.year = ?
-    `, [currentMonth, currentYear, req.userId, currentMonth, currentYear]);
+    `, [currentMonth, currentYear, req.user.id, currentMonth, currentYear]);
     
     res.json({
       user,
@@ -151,7 +151,7 @@ router.get('/inventory', verifyToken, async (req, res) => {
       JOIN resources r ON ui.resource_id = r.id
       WHERE ui.user_id = ?
       ORDER BY r.rarity DESC, r.name
-    `, [req.userId]);
+    `, [req.user.id]);
     
     res.json({ inventory });
   } catch (error) {
@@ -170,7 +170,7 @@ router.put('/', verifyToken, async (req, res) => {
         UPDATE users
         SET username = ?
         WHERE id = ?
-      `, [username, req.userId]);
+      `, [username, req.user.id]);
     }
     
     res.json({ 

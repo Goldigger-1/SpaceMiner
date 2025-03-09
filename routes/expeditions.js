@@ -23,7 +23,7 @@ router.post('/start', verifyToken, async (req, res) => {
     const activeExpedition = await getOne(`
       SELECT * FROM expeditions 
       WHERE user_id = ? AND status = 'active'
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (activeExpedition) {
       return res.status(400).json({ error: 'You already have an active expedition' });
@@ -35,7 +35,7 @@ router.post('/start', verifyToken, async (req, res) => {
       FROM user_upgrades uu
       JOIN shop_items si ON uu.item_id = si.id
       WHERE uu.user_id = ? AND uu.active = 1
-    `, [req.userId]);
+    `, [req.user.id]);
     
     // Calculate expedition time based on planet and user upgrades
     let expeditionTime = planet.base_time;
@@ -53,7 +53,7 @@ router.post('/start', verifyToken, async (req, res) => {
     const result = await runQuery(`
       INSERT INTO expeditions (user_id, planet_id, start_time, end_time, status, success)
       VALUES (?, ?, ?, ?, 'active', 0)
-    `, [req.userId, planet_id, startTime.toISOString(), endTime.toISOString()]);
+    `, [req.user.id, planet_id, startTime.toISOString(), endTime.toISOString()]);
     
     const expedition = await getOne('SELECT * FROM expeditions WHERE id = ?', [result.id]);
     
@@ -76,7 +76,7 @@ router.get('/active', verifyToken, async (req, res) => {
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
       WHERE e.user_id = ? AND e.status = 'active'
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (!expedition) {
       return res.status(404).json({ error: 'No active expedition found' });
@@ -108,7 +108,7 @@ router.post('/mine', verifyToken, async (req, res) => {
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
       WHERE e.user_id = ? AND e.status = 'active'
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (!expedition) {
       return res.status(404).json({ error: 'No active expedition found' });
@@ -140,7 +140,7 @@ router.post('/mine', verifyToken, async (req, res) => {
       FROM user_upgrades uu
       JOIN shop_items si ON uu.item_id = si.id
       WHERE uu.user_id = ? AND uu.active = 1
-    `, [req.userId]);
+    `, [req.user.id]);
     
     // Calculate drone collection bonus
     const droneUpgrade = userUpgrades.find(u => u.type === 'drone' && u.subtype === 'collection');
@@ -238,7 +238,7 @@ router.post('/explore', verifyToken, async (req, res) => {
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
       WHERE e.user_id = ? AND e.status = 'active'
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (!expedition) {
       return res.status(404).json({ error: 'No active expedition found' });
@@ -270,7 +270,7 @@ router.post('/explore', verifyToken, async (req, res) => {
       FROM user_upgrades uu
       JOIN shop_items si ON uu.item_id = si.id
       WHERE uu.user_id = ? AND uu.active = 1
-    `, [req.userId]);
+    `, [req.user.id]);
     
     // Calculate drone collection bonus
     const droneUpgrade = userUpgrades.find(u => u.type === 'drone' && u.subtype === 'collection');
@@ -346,7 +346,7 @@ router.post('/check-danger', verifyToken, async (req, res) => {
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
       WHERE e.user_id = ? AND e.status = 'active'
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (!expedition) {
       return res.status(404).json({ error: 'No active expedition found' });
@@ -426,7 +426,7 @@ router.post('/time-up', verifyToken, async (req, res) => {
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
       WHERE e.user_id = ? AND e.status = 'active'
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (!expedition) {
       return res.status(404).json({ error: 'No active expedition found' });
@@ -453,7 +453,7 @@ router.post('/time-up', verifyToken, async (req, res) => {
       FROM user_upgrades uu
       JOIN shop_items si ON uu.item_id = si.id
       WHERE uu.user_id = ? AND uu.active = 1
-    `, [req.userId]);
+    `, [req.user.id]);
     
     // Check if user has insurance
     const insuranceUpgrade = userUpgrades.find(u => u.type === 'insurance' && u.subtype === 'recovery');
@@ -480,7 +480,7 @@ router.post('/time-up', verifyToken, async (req, res) => {
           const existingInventory = await getOne(`
             SELECT * FROM user_inventory
             WHERE user_id = ? AND resource_id = ?
-          `, [req.userId, resource.resource_id]);
+          `, [req.user.id, resource.resource_id]);
           
           if (existingInventory) {
             // Update existing inventory
@@ -494,7 +494,7 @@ router.post('/time-up', verifyToken, async (req, res) => {
             await runQuery(`
               INSERT INTO user_inventory (user_id, resource_id, quantity)
               VALUES (?, ?, ?)
-            `, [req.userId, resource.resource_id, finalQuantity]);
+            `, [req.user.id, resource.resource_id, finalQuantity]);
           }
           
           // Add to total value
@@ -512,7 +512,7 @@ router.post('/time-up', verifyToken, async (req, res) => {
           UPDATE users
           SET currency = currency + ?
           WHERE id = ?
-        `, [totalValue, req.userId]);
+        `, [totalValue, req.user.id]);
       }
     }
     
@@ -540,7 +540,7 @@ router.post('/return', verifyToken, async (req, res) => {
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
       WHERE e.user_id = ? AND e.status = 'active'
-    `, [req.userId]);
+    `, [req.user.id]);
     
     if (!expedition) {
       return res.status(404).json({ error: 'No active expedition found' });
@@ -557,7 +557,7 @@ router.post('/return', verifyToken, async (req, res) => {
       FROM user_upgrades uu
       JOIN shop_items si ON uu.item_id = si.id
       WHERE uu.user_id = ? AND uu.active = 1
-    `, [req.userId]);
+    `, [req.user.id]);
     
     // Get insurance recovery percentage if expedition failed
     let recoveryPercentage = 0;
@@ -598,7 +598,7 @@ router.post('/return', verifyToken, async (req, res) => {
           const existingInventory = await getOne(`
             SELECT * FROM user_inventory
             WHERE user_id = ? AND resource_id = ?
-          `, [req.userId, resource.resource_id]);
+          `, [req.user.id, resource.resource_id]);
           
           if (existingInventory) {
             // Update existing inventory
@@ -612,7 +612,7 @@ router.post('/return', verifyToken, async (req, res) => {
             await runQuery(`
               INSERT INTO user_inventory (user_id, resource_id, quantity)
               VALUES (?, ?, ?)
-            `, [req.userId, resource.resource_id, finalQuantity]);
+            `, [req.user.id, resource.resource_id, finalQuantity]);
           }
           
           // Add to total value
@@ -631,7 +631,7 @@ router.post('/return', verifyToken, async (req, res) => {
         UPDATE users
         SET currency = currency + ?
         WHERE id = ?
-      `, [totalValue, req.userId]);
+      `, [totalValue, req.user.id]);
       
       // Update leaderboard
       const currentDate = new Date();
@@ -642,7 +642,7 @@ router.post('/return', verifyToken, async (req, res) => {
       const leaderboardEntry = await getOne(`
         SELECT * FROM leaderboard
         WHERE user_id = ? AND month = ? AND year = ?
-      `, [req.userId, month, year]);
+      `, [req.user.id, month, year]);
       
       if (leaderboardEntry) {
         // Update existing entry
@@ -656,7 +656,7 @@ router.post('/return', verifyToken, async (req, res) => {
         await runQuery(`
           INSERT INTO leaderboard (user_id, score, month, year)
           VALUES (?, ?, ?, ?)
-        `, [req.userId, totalValue, month, year]);
+        `, [req.user.id, totalValue, month, year]);
       }
     }
     
@@ -687,7 +687,7 @@ router.get('/history', verifyToken, async (req, res) => {
       WHERE e.user_id = ? AND e.status = 'completed'
       ORDER BY e.end_time DESC
       LIMIT 10
-    `, [req.userId]);
+    `, [req.user.id]);
     
     // Get resources for each expedition
     for (const expedition of expeditions) {

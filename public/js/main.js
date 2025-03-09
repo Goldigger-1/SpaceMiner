@@ -35,13 +35,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const user = webApp.initDataUnsafe.user;
                     console.log('Telegram user data found:', user);
                     
-                    // Authenticate with user data
-                    await api.authenticateTelegram();
-                    console.log('Authenticated with Telegram successfully');
-                    
-                    // Reload UI data after authentication
-                    await ui.loadUserData();
-                    await ui.loadPlanets();
+                    try {
+                        // Authenticate with user data
+                        const authResult = await api.authenticateTelegram();
+                        console.log('Authenticated with Telegram successfully:', authResult);
+                        
+                        // Verify token was set properly
+                        if (api.hasToken()) {
+                            console.log('Token successfully set in API client');
+                            
+                            // Force reload all data with the new token
+                            await ui.loadUserData();
+                            await ui.loadPlanets();
+                            
+                            // Reload all other components
+                            await planets.init();
+                            await expedition.init();
+                            await inventory.init();
+                            await shop.init();
+                            await ranking.init();
+                            await profile.init();
+                            await fortuneWheel.init();
+                            
+                            console.log('All data reloaded successfully with new token');
+                        } else {
+                            console.error('Token not set after authentication');
+                            ui.showError('Authentication problem: Token not set');
+                        }
+                    } catch (authError) {
+                        console.error('Authentication error:', authError);
+                        ui.showError('Failed to authenticate with Telegram');
+                    }
                 } else {
                     console.error('No Telegram user data found in WebApp');
                     ui.showError('Failed to get Telegram user data');

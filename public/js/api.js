@@ -108,6 +108,26 @@ class API {
             }
             
             console.log(`Request headers:`, options.headers);
+            
+            // Debug token
+            if (this.token) {
+                console.log(`Using token for request: ${this.token.substring(0, 20)}...`);
+            } else {
+                console.warn('No token available for request');
+                
+                // Try to retrieve token from localStorage again
+                try {
+                    const storedToken = localStorage.getItem('token');
+                    if (storedToken && storedToken !== this.token) {
+                        console.log('Retrieved token from localStorage');
+                        this.token = storedToken;
+                        options.headers.Authorization = `Bearer ${this.token}`;
+                    }
+                } catch (error) {
+                    console.error('Failed to retrieve token from localStorage:', error);
+                }
+            }
+            
             if (options.body) {
                 console.log(`Request body:`, options.body.length > 1000 ? options.body.substring(0, 1000) + '...' : options.body);
             }

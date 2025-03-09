@@ -24,7 +24,7 @@ router.post('/spin', verifyToken, async (req, res) => {
     const { payment_type } = req.body;
     
     // Get user data
-    const user = await getOne('SELECT * FROM users WHERE id = ?', [req.userId]);
+    const user = await getOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -43,7 +43,7 @@ router.post('/spin', verifyToken, async (req, res) => {
         UPDATE users
         SET premium_currency = premium_currency - ?
         WHERE id = ?
-      `, [spinCost, req.userId]);
+      `, [spinCost, req.user.id]);
     } else {
       // Real money payment
       // In a real implementation, this would be handled by a payment gateway
@@ -79,7 +79,7 @@ router.post('/spin', verifyToken, async (req, res) => {
     await runQuery(`
       INSERT INTO user_spins (user_id, reward_id, spin_date)
       VALUES (?, ?, ?)
-    `, [req.userId, selectedReward.id, new Date().toISOString()]);
+    `, [req.user.id, selectedReward.id, new Date().toISOString()]);
     
     // Process the reward
     let rewardMessage = '';
@@ -91,7 +91,7 @@ router.post('/spin', verifyToken, async (req, res) => {
           UPDATE users
           SET currency = currency + ?
           WHERE id = ?
-        `, [selectedReward.value, req.userId]);
+        `, [selectedReward.value, req.user.id]);
         
         rewardMessage = `You won ${selectedReward.value} in-game currency!`;
         break;
@@ -102,7 +102,7 @@ router.post('/spin', verifyToken, async (req, res) => {
           UPDATE users
           SET premium_currency = premium_currency + ?
           WHERE id = ?
-        `, [selectedReward.value, req.userId]);
+        `, [selectedReward.value, req.user.id]);
         
         rewardMessage = `You won ${selectedReward.value} premium currency!`;
         break;
@@ -120,7 +120,7 @@ router.post('/spin', verifyToken, async (req, res) => {
           VALUES (?, 
             (SELECT id FROM shop_items WHERE type = 'temporary_boost' AND subtype = ? LIMIT 1), 
             ?, ?, 1)
-        `, [req.userId, boostType, new Date().toISOString(), expiryDate.toISOString()]);
+        `, [req.user.id, boostType, new Date().toISOString(), expiryDate.toISOString()]);
         
         rewardMessage = `You won a ${selectedReward.description}!`;
         break;
@@ -132,7 +132,7 @@ router.post('/spin', verifyToken, async (req, res) => {
     // Get updated user data
     const updatedUser = await getOne(`
       SELECT currency, premium_currency FROM users WHERE id = ?
-    `, [req.userId]);
+    `, [req.user.id]);
     
     res.json({
       success: true,
@@ -157,7 +157,7 @@ router.get('/history', verifyToken, async (req, res) => {
       WHERE us.user_id = ?
       ORDER BY us.spin_date DESC
       LIMIT 20
-    `, [req.userId]);
+    `, [req.user.id]);
     
     res.json({ history });
   } catch (error) {
@@ -198,12 +198,12 @@ router.post('/purchase-spins', verifyToken, async (req, res) => {
       UPDATE users
       SET premium_currency = premium_currency + ?
       WHERE id = ?
-    `, [totalPremiumCurrency, req.userId]);
+    `, [totalPremiumCurrency, req.user.id]);
     
     // Get updated user data
     const updatedUser = await getOne(`
       SELECT premium_currency FROM users WHERE id = ?
-    `, [req.userId]);
+    `, [req.user.id]);
     
     res.json({
       success: true,

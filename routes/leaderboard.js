@@ -25,7 +25,7 @@ router.get('/', verifyToken, async (req, res) => {
       // Get user's rank if they're on the leaderboard
       let userRank = null;
       for (let i = 0; i < leaderboard.length; i++) {
-        if (leaderboard[i].telegram_id === req.telegram_id) {
+        if (leaderboard[i].telegram_id === req.user.telegram_id) {
           userRank = i + 1;
           break;
         }
@@ -51,7 +51,7 @@ router.get('/', verifyToken, async (req, res) => {
       // Get user's rank if they're on the leaderboard
       let userRank = null;
       for (let i = 0; i < leaderboard.length; i++) {
-        if (leaderboard[i].telegram_id === req.telegram_id) {
+        if (leaderboard[i].telegram_id === req.user.telegram_id) {
           userRank = i + 1;
           break;
         }
@@ -93,7 +93,7 @@ router.get('/monthly', verifyToken, async (req, res) => {
     // Get user's rank if they're on the leaderboard
     let userRank = null;
     for (let i = 0; i < leaderboard.length; i++) {
-      if (leaderboard[i].telegram_id === req.telegram_id) {
+      if (leaderboard[i].telegram_id === req.user.telegram_id) {
         userRank = i + 1;
         break;
       }
@@ -126,7 +126,7 @@ router.get('/global', verifyToken, async (req, res) => {
     // Get user's rank if they're on the leaderboard
     let userRank = null;
     for (let i = 0; i < leaderboard.length; i++) {
-      if (leaderboard[i].telegram_id === req.telegram_id) {
+      if (leaderboard[i].telegram_id === req.user.telegram_id) {
         userRank = i + 1;
         break;
       }
@@ -152,7 +152,7 @@ router.get('/my-history', verifyToken, async (req, res) => {
       WHERE l.user_id = ?
       ORDER BY l.year DESC, l.month DESC
       LIMIT 12
-    `, [req.userId]);
+    `, [req.user.id]);
     
     res.json({ rankings });
   } catch (error) {
