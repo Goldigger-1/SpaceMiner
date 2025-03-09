@@ -240,14 +240,27 @@ class UI {
      */
     async init() {
         try {
-            // Show loading screen
-            this.showLoadingScreen();
+            console.log('Initializing UI...');
             
             // Check if user is already authenticated
             if (api.hasToken()) {
-                console.log('User already authenticated');
-                // Load user data
-                await this.loadUserData();
+                console.log('User already authenticated, loading user data...');
+                try {
+                    // Load user data
+                    await this.loadUserData();
+                    console.log('User data loaded successfully');
+                } catch (error) {
+                    console.error('Error loading user data:', error);
+                    this.showError('Failed to load user data: ' + error.message);
+                    
+                    // If we get an authentication error, clear the token
+                    if (error.message.includes('Authentication failed') || 
+                        error.message.includes('401') || 
+                        error.message.includes('unauthorized')) {
+                        console.log('Authentication error detected, clearing token');
+                        api.clearToken();
+                    }
+                }
             } else {
                 console.log('User not authenticated, checking for Telegram WebApp');
                 // Check for Telegram WebApp authentication
@@ -261,22 +274,32 @@ class UI {
             }
             
             // Load planets
-            await this.loadPlanets();
+            try {
+                await this.loadPlanets();
+                console.log('Planets loaded successfully');
+            } catch (error) {
+                console.error('Error loading planets:', error);
+                this.showError('Failed to load planets: ' + error.message);
+            }
             
             // Initialize fortune wheel
-            this.initFortuneWheel();
-            
-            // Hide loading screen
-            this.hideLoadingScreen();
+            try {
+                this.initFortuneWheel();
+                console.log('Fortune wheel initialized successfully');
+            } catch (error) {
+                console.error('Error initializing fortune wheel:', error);
+                // Non-critical error, just log it
+            }
             
             // Show home tab
             this.showTab('home');
             
-            console.log('Game initialized successfully');
+            console.log('UI initialized successfully');
+            return true;
         } catch (error) {
-            console.error('Error initializing game:', error);
-            this.showError('Failed to initialize game. Please try again.');
-            this.hideLoadingScreen();
+            console.error('Error initializing UI:', error);
+            this.showError('Failed to initialize UI: ' + error.message);
+            return false;
         }
     }
 
@@ -515,41 +538,91 @@ class UI {
      */
     async loadUserData() {
         try {
+            console.log('Loading user data...');
             const profile = await api.getProfile();
+            console.log('Profile data received:', profile);
+            
+            if (!profile) {
+                console.error('Empty profile data received');
+                throw new Error('Failed to load profile data');
+            }
             
             // Update currency display
-            this.regularCurrencyEl.textContent = profile.currency;
-            this.premiumCurrencyEl.textContent = profile.premium_currency;
+            if (profile.currency !== undefined) {
+                this.regularCurrencyEl.textContent = profile.currency;
+            } else {
+                console.warn('Currency data missing from profile');
+            }
+            
+            if (profile.premium_currency !== undefined) {
+                this.premiumCurrencyEl.textContent = profile.premium_currency;
+            } else {
+                console.warn('Premium currency data missing from profile');
+            }
             
             // Update spaceship stats
-            this.returnSpeedEl.textContent = `${profile.return_speed}x`;
-            this.storageCapacityEl.textContent = `${profile.storage_capacity} units`;
-            this.suitAutonomyEl.textContent = profile.suit_autonomy > 1 ? 
-                `+${Math.round((profile.suit_autonomy - 1) * 100)}%` : 'Standard';
-            this.droneStatusEl.textContent = profile.drone_collection > 0 ? 
-                `Active (+${Math.round(profile.drone_collection * 100)}%)` : 'Not Active';
+            if (profile.return_speed !== undefined) {
+                this.returnSpeedEl.textContent = `${profile.return_speed}x`;
+            }
+            
+            if (profile.storage_capacity !== undefined) {
+                this.storageCapacityEl.textContent = `${profile.storage_capacity} units`;
+            }
+            
+            if (profile.suit_autonomy !== undefined) {
+                this.suitAutonomyEl.textContent = profile.suit_autonomy > 1 ? 
+                    `+${Math.round((profile.suit_autonomy - 1) * 100)}%` : 'Standard';
+            }
+            
+            if (profile.drone_collection !== undefined) {
+                this.droneStatusEl.textContent = profile.drone_collection > 0 ? 
+                    `Active (+${Math.round(profile.drone_collection * 100)}%)` : 'Not Active';
+            }
             
             // Check for active expedition
             if (profile.active_expedition) {
+                console.log('Active expedition found:', profile.active_expedition);
                 this.currentExpedition = profile.active_expedition;
                 this.startCountdown();
                 this.showActiveExpedition();
+            } else {
+                console.log('No active expedition found');
             }
             
             // Update profile tab
-            this.profileUsername.textContent = profile.username;
-            this.totalExpeditions.textContent = profile.stats.total_expeditions;
-            this.successfulReturns.textContent = profile.stats.successful_returns;
-            this.totalResources.textContent = profile.stats.total_resources;
+            if (profile.username) {
+                this.profileUsername.textContent = profile.username;
+            }
+            
+            // Update stats if available
+            if (profile.stats) {
+                if (this.totalExpeditions && profile.stats.total_expeditions !== undefined) {
+                    this.totalExpeditions.textContent = profile.stats.total_expeditions;
+                }
+                
+                if (this.successfulReturns && profile.stats.successful_returns !== undefined) {
+                    this.successfulReturns.textContent = profile.stats.successful_returns;
+                }
+                
+                if (this.totalResources && profile.stats.total_resources !== undefined) {
+                    this.totalResources.textContent = profile.stats.total_resources;
+                }
+            } else {
+                console.warn('Stats data missing from profile');
+            }
             
             // Update fortune wheel spins
             this.spins = profile.spins || 0;
             if (this.spinsRemaining) {
                 this.spinsRemaining.textContent = this.spins;
             }
+            
+            console.log('User data loaded successfully');
+            return profile;
         } catch (error) {
             console.error('Error loading user data:', error);
-            this.showError('Failed to load user data');
+            // Don't show error to user here, let the caller handle it
+            throw error;
         }
     }
 
@@ -1187,96 +1260,71 @@ class UI {
      */
     async loadPlanets() {
         try {
-            if (!this.planetsList) return;
-            
-            // Show loading indicator
-            this.planetsList.innerHTML = '<div class="loading-indicator">Loading planets...</div>';
-            
-            // Get planets from API
+            console.log('Loading planets data...');
             const response = await api.getPlanets();
             
-            if (!response || !response.planets || !Array.isArray(response.planets)) {
-                throw new Error('Invalid planets data received');
+            if (!response || !response.planets) {
+                console.error('Invalid planets data received:', response);
+                throw new Error('Failed to load planets data');
             }
             
             this.planets = response.planets;
+            console.log(`Loaded ${this.planets.length} planets`);
             
-            // Clear planets list
-            this.planetsList.innerHTML = '';
-            
-            // Add planets to list
-            this.planets.forEach(planet => {
-                const planetCard = document.createElement('div');
-                planetCard.className = 'planet-card';
-                planetCard.setAttribute('data-planet-id', planet.id);
+            // Update planets list UI if we're on the expedition tab
+            if (this.currentTab === 'expedition' && this.planetsList) {
+                // Clear existing planets
+                this.planetsList.innerHTML = '';
                 
-                // Set difficulty stars
-                let difficultyStars = '';
-                for (let i = 0; i < 5; i++) {
-                    if (i < planet.difficulty) {
-                        difficultyStars += '<i class="fas fa-star"></i>';
-                    } else {
-                        difficultyStars += '<i class="far fa-star"></i>';
-                    }
-                }
-                
-                // Set danger level indicator
-                let dangerLevel = '';
-                for (let i = 0; i < 5; i++) {
-                    if (i < planet.danger_level) {
-                        dangerLevel += '<i class="fas fa-exclamation-triangle danger-icon"></i>';
-                    } else {
-                        dangerLevel += '<i class="far fa-exclamation-triangle"></i>';
-                    }
-                }
-                
-                planetCard.innerHTML = `
-                    <div class="planet-image">
-                        <img src="${planet.image_url || 'assets/planets/default-planet.png'}" alt="${planet.name}">
-                    </div>
-                    <div class="planet-info">
-                        <h3>${planet.name}</h3>
-                        <div class="planet-stats">
-                            <div class="planet-stat">
-                                <span class="stat-label">Difficulty:</span>
-                                <span class="stat-value">${difficultyStars}</span>
-                            </div>
-                            <div class="planet-stat">
-                                <span class="stat-label">Danger:</span>
-                                <span class="stat-value">${dangerLevel}</span>
-                            </div>
-                            <div class="planet-stat">
-                                <span class="stat-label">Time:</span>
-                                <span class="stat-value">${Math.floor(planet.base_time / 60)}:${(planet.base_time % 60).toString().padStart(2, '0')}</span>
-                            </div>
-                            <div class="planet-stat">
-                                <span class="stat-label">Resources:</span>
-                                <span class="stat-value">${planet.resource_multiplier}x</span>
-                            </div>
+                // Add planets to the list
+                this.planets.forEach(planet => {
+                    const planetCard = document.createElement('div');
+                    planetCard.className = 'planet-card';
+                    planetCard.setAttribute('data-planet-id', planet.id);
+                    
+                    // Set rarity class
+                    planetCard.classList.add(`rarity-${planet.rarity}`);
+                    
+                    planetCard.innerHTML = `
+                        <div class="planet-image">
+                            <img src="img/planets/${planet.image || 'default.png'}" alt="${planet.name}">
                         </div>
-                    </div>
-                `;
-                
-                // Add click event
-                planetCard.addEventListener('click', () => {
-                    this.showPlanetDetails(planet.id);
+                        <div class="planet-info">
+                            <h3>${planet.name}</h3>
+                            <p class="planet-rarity">${this.getRarityText(planet.rarity)}</p>
+                            <p class="planet-distance">${planet.distance} light years</p>
+                            <p class="planet-description">${planet.description || 'No description available'}</p>
+                        </div>
+                        <div class="planet-actions">
+                            <button class="action-button view-planet-btn" data-planet-id="${planet.id}">View Details</button>
+                            <button class="action-button start-expedition-btn" data-planet-id="${planet.id}">Start Expedition</button>
+                        </div>
+                    `;
+                    
+                    this.planetsList.appendChild(planetCard);
+                    
+                    // Add event listeners
+                    const viewPlanetBtn = planetCard.querySelector('.view-planet-btn');
+                    if (viewPlanetBtn) {
+                        viewPlanetBtn.addEventListener('click', () => {
+                            this.showPlanetDetails(planet.id);
+                        });
+                    }
+                    
+                    const startExpeditionBtn = planetCard.querySelector('.start-expedition-btn');
+                    if (startExpeditionBtn) {
+                        startExpeditionBtn.addEventListener('click', () => {
+                            expedition.startExpedition(planet.id);
+                        });
+                    }
                 });
-                
-                this.planetsList.appendChild(planetCard);
-            });
-            
-            // If no planets found
-            if (this.planets.length === 0) {
-                this.planetsList.innerHTML = '<div class="empty-state">No planets available for expedition</div>';
             }
+            
+            return this.planets;
         } catch (error) {
             console.error('Error loading planets:', error);
-            this.showError('Failed to load planets');
-            
-            // Show error state
-            if (this.planetsList) {
-                this.planetsList.innerHTML = '<div class="error-state">Failed to load planets. Please try again.</div>';
-            }
+            // Don't show error to user here, let the caller handle it
+            throw error;
         }
     }
 
@@ -1461,11 +1509,6 @@ class UI {
             if (expeditionContent && activeExpeditionEl) {
                 expeditionContent.classList.remove('hidden');
                 activeExpeditionEl.classList.add('hidden');
-            }
-            
-            // Update currency display
-            if (result && result.currency) {
-                this.regularCurrencyEl.textContent = result.currency;
             }
             
             this.hideLoadingScreen();

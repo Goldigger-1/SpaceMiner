@@ -11,15 +11,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             startExpeditionBtn.addEventListener('click', () => expedition.startExpedition());
         }
         
-        // Initialize modules
-        ui.init();
-        planets.init();
-        expedition.init();
-        inventory.init();
-        shop.init();
-        ranking.init();
-        profile.init();
-        fortuneWheel.init();
+        // Show loading screen immediately
+        ui.showLoadingScreen();
         
         // Check for Telegram WebApp
         if (window.Telegram && window.Telegram.WebApp) {
@@ -37,42 +30,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
                     try {
                         // Authenticate with user data
-                        const authResult = await api.authenticateTelegram();
+                        const authResult = await api.authenticateTelegram(webApp.initData);
                         console.log('Authenticated with Telegram successfully:', authResult);
                         
-                        // Verify token was set properly
-                        if (api.hasToken()) {
-                            console.log('Token successfully set in API client');
-                            
-                            // Force reload all data with the new token
-                            await ui.loadUserData();
-                            await ui.loadPlanets();
-                            
-                            // Reload all other components
-                            await planets.init();
-                            await expedition.init();
-                            await inventory.init();
-                            await shop.init();
-                            await ranking.init();
-                            await profile.init();
-                            await fortuneWheel.init();
-                            
-                            console.log('All data reloaded successfully with new token');
-                        } else {
-                            console.error('Token not set after authentication');
-                            ui.showError('Authentication problem: Token not set');
-                        }
+                        // Initialize modules after authentication
+                        await initializeGame();
                     } catch (authError) {
                         console.error('Authentication error:', authError);
-                        ui.showError('Failed to authenticate with Telegram');
+                        ui.hideLoadingScreen();
+                        ui.showError('Failed to authenticate with Telegram: ' + authError.message);
                     }
                 } else {
                     console.error('No Telegram user data found in WebApp');
+                    ui.hideLoadingScreen();
                     ui.showError('Failed to get Telegram user data');
                 }
             } catch (error) {
                 console.error('Error authenticating with Telegram:', error);
-                ui.showError('Failed to authenticate with Telegram');
+                ui.hideLoadingScreen();
+                ui.showError('Failed to authenticate with Telegram: ' + error.message);
             }
             
             // Set up back button handler
@@ -103,22 +79,50 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (token) {
                     await api.authenticateWithToken(token);
                     console.log('Authenticated with token');
+                    await initializeGame();
                 } else {
                     // Redirect to login page or show login modal
                     console.log('No authentication token found');
+                    ui.hideLoadingScreen();
                     showLoginPrompt();
                 }
             } catch (error) {
                 console.error('Error authenticating:', error);
-                ui.showError('Failed to authenticate');
+                ui.hideLoadingScreen();
+                ui.showError('Failed to authenticate: ' + error.message);
                 showLoginPrompt();
             }
         }
     } catch (error) {
         console.error('Error initializing application:', error);
-        ui.showError('Failed to initialize application');
+        ui.hideLoadingScreen();
+        ui.showError('Failed to initialize application: ' + error.message);
     }
 });
+
+/**
+ * Initialize the game after successful authentication
+ */
+async function initializeGame() {
+    try {
+        // Initialize modules
+        ui.init();
+        await planets.init();
+        await expedition.init();
+        await inventory.init();
+        await shop.init();
+        await ranking.init();
+        await profile.init();
+        await fortuneWheel.init();
+        
+        console.log('Game initialized successfully');
+        ui.hideLoadingScreen();
+    } catch (error) {
+        console.error('Error initializing game:', error);
+        ui.showError('Failed to initialize game: ' + error.message);
+        ui.hideLoadingScreen();
+    }
+}
 
 /**
  * Show login prompt for web browser

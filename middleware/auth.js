@@ -1,43 +1,47 @@
 const jwt = require('jsonwebtoken');
 
 /**
- * Verify JWT token middleware
+ * Middleware to verify JWT token
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next function
  */
 const verifyToken = (req, res, next) => {
-  console.log('Authentication attempt:', {
-    tokenProvided: !!req.headers.authorization,
-    telegramDataProvided: !!req.headers['telegram-data']
-  });
-  
-  // Get token from Authorization header
-  const token = req.headers.authorization?.split(' ')[1];
-  
-  if (!token) {
-    console.error('No token provided in request');
-    return res.status(401).json({ error: 'No token provided' });
-  }
-  
   try {
-    // Verify the token
-    console.log('Verifying token:', token.substring(0, 20) + '...');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    // Get token from Authorization header
+    const token = req.headers.authorization?.split(' ')[1];
     
-    // Add user data to request
-    req.user = { id: decoded.id, telegram_id: decoded.telegram_id };
-    console.log('Token verified successfully for user ID:', decoded.id);
+    // Log request information for debugging
+    console.log(`Token verification request for path: ${req.path}`);
+    console.log(`Authorization header present: ${!!req.headers.authorization}`);
     
+    if (!token) {
+      console.log('No token provided in request');
+      return res.status(401).json({ error: 'No token provided' });
+    }
+    
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Store user data in request object
+    req.user = {
+      id: decoded.id,
+      telegram_id: decoded.telegram_id
+    };
+    
+    console.log(`Token verified successfully for user ID: ${req.user.id}`);
     next();
   } catch (error) {
-    console.error('Token verification failed:', error.message);
+    console.error('Token verification error:', error);
     
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired' });
+    } else if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
     }
     
-    return res.status(401).json({ error: 'Invalid token' });
+    res.status(401).json({ error: 'Authentication failed' });
   }
 };
 
-module.exports = {
-  verifyToken
-};
+module.exports = { verifyToken };

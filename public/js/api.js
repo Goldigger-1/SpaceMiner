@@ -107,7 +107,7 @@ class API {
                 options.body = JSON.stringify(data);
             }
             
-            console.log(`Request headers:`, options.headers);
+            console.log(`Request headers:`, JSON.stringify(options.headers));
             
             // Debug token
             if (this.token) {
@@ -134,7 +134,7 @@ class API {
             
             // Add timeout to fetch request
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout to 15 seconds
             options.signal = controller.signal;
             
             const response = await fetch(url, options);
@@ -147,7 +147,7 @@ class API {
                 console.error('Authentication failed (401 Unauthorized)');
                 
                 // Only clear token if not trying to authenticate
-                if (!endpoint.includes('/auth/login')) {
+                if (!endpoint.includes('/auth/')) {
                     this.clearToken();
                     
                     // Try to re-authenticate with Telegram if available
@@ -171,8 +171,10 @@ class API {
             
             // Parse response
             const contentType = response.headers.get('content-type');
+            let responseData;
+            
             if (contentType && contentType.includes('application/json')) {
-                const responseData = await response.json();
+                responseData = await response.json();
                 console.log(`Response data:`, responseData);
                 
                 if (!response.ok) {
@@ -266,8 +268,16 @@ class API {
                     telegram_id: user.id.toString(),
                     username: user.username || `user_${user.id}`,
                     auth_date: Math.floor(Date.now() / 1000),
-                    initData: window.Telegram.WebApp.initData // Include the full initData
+                    initData: window.Telegram.WebApp.initData || initData // Use provided initData or from WebApp
                 };
+                
+                // Store Telegram data for future requests
+                this.telegramInitData = window.Telegram?.WebApp?.initData || initData || '';
+                try {
+                    localStorage.setItem('telegramInitData', this.telegramInitData);
+                } catch (error) {
+                    console.error('Failed to save Telegram initData to localStorage:', error);
+                }
                 
                 console.log('Prepared user data for authentication:', telegramUser);
             } else {
@@ -286,14 +296,6 @@ class API {
         if (result.token) {
             console.log('Setting token from authentication response');
             this.setToken(result.token);
-            
-            // Store Telegram data for future requests
-            this.telegramInitData = window.Telegram?.WebApp?.initData || '';
-            try {
-                localStorage.setItem('telegramInitData', this.telegramInitData);
-            } catch (error) {
-                console.error('Failed to save Telegram initData to localStorage:', error);
-            }
         } else {
             console.error('No token received from server');
             throw new Error('Authentication failed - no token received');
