@@ -13,26 +13,44 @@ class Ranking {
 
     /**
      * Initialize ranking module
+     * @returns {Promise} - Promise that resolves when initialization is complete
      */
-    init() {
-        // Add event listeners for tab buttons
-        this.rankingTabButtons.forEach(button => {
-            button.addEventListener('click', (event) => {
-                const period = event.target.getAttribute('data-period');
-                this.loadLeaderboard(period);
-                
-                // Update active button
-                this.rankingTabButtons.forEach(btn => btn.classList.remove('active'));
-                event.target.classList.add('active');
+    async init() {
+        try {
+            console.log('Initializing ranking module...');
+            
+            // Add event listeners for tab buttons
+            this.rankingTabButtons.forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const period = event.target.getAttribute('data-period');
+                    this.loadLeaderboard(period);
+                    
+                    // Update active button
+                    this.rankingTabButtons.forEach(btn => btn.classList.remove('active'));
+                    event.target.classList.add('active');
+                });
             });
-        });
-        
-        // Load initial leaderboard
-        this.loadLeaderboard(this.currentPeriod);
-        
-        // Update monthly time remaining
-        this.updateMonthlyTimeRemaining();
-        setInterval(() => this.updateMonthlyTimeRemaining(), 60000); // Update every minute
+            
+            // Update monthly time remaining
+            this.updateMonthlyTimeRemaining();
+            setInterval(() => this.updateMonthlyTimeRemaining(), 60000); // Update every minute
+            
+            // Load initial leaderboard
+            try {
+                await this.loadLeaderboard(this.currentPeriod);
+            } catch (leaderboardError) {
+                console.error('Failed to load initial leaderboard:', leaderboardError);
+                // Continue initialization even if loading leaderboard fails
+            }
+            
+            console.log('Ranking module initialized successfully');
+            return true;
+        } catch (error) {
+            console.error('Error initializing ranking module:', error);
+            // Don't throw here, just log the error
+            // This allows the game to continue loading even if ranking fails
+            return false;
+        }
     }
 
     /**

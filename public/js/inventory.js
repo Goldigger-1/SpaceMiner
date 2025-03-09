@@ -13,22 +13,35 @@ class Inventory {
 
     /**
      * Initialize inventory module
+     * @returns {Promise} - Promise that resolves when initialization is complete
      */
-    init() {
-        // Add event listeners for filter buttons
-        this.filterButtons.forEach(button => {
-            button.addEventListener('click', (event) => {
-                const filter = event.target.getAttribute('data-filter');
-                this.filterInventory(filter);
-                
-                // Update active button
-                this.filterButtons.forEach(btn => btn.classList.remove('active'));
-                event.target.classList.add('active');
+    async init() {
+        try {
+            console.log('Initializing inventory module...');
+            
+            // Add event listeners for filter buttons
+            this.filterButtons.forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const filter = event.target.getAttribute('data-filter');
+                    this.filterInventory(filter);
+                    
+                    // Update active button
+                    this.filterButtons.forEach(btn => btn.classList.remove('active'));
+                    event.target.classList.add('active');
+                });
             });
-        });
-        
-        // Load inventory
-        this.loadInventory();
+            
+            // Load inventory
+            await this.loadInventory();
+            console.log('Inventory module initialized successfully');
+            return true;
+        } catch (error) {
+            console.error('Error initializing inventory module:', error);
+            // Don't throw here, just log the error and return an empty inventory
+            // This allows the game to continue loading even if inventory fails
+            this.inventoryItems = [];
+            return false;
+        }
     }
 
     /**

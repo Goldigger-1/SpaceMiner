@@ -13,27 +13,47 @@ class Shop {
 
     /**
      * Initialize shop module
+     * @returns {Promise} - Promise that resolves when initialization is complete
      */
-    init() {
-        // Add event listeners for category buttons
-        this.categoryButtons.forEach(button => {
-            button.addEventListener('click', (event) => {
-                const category = event.target.getAttribute('data-category');
-                this.loadShopItems(category);
-                
-                // Update active button
-                this.categoryButtons.forEach(btn => btn.classList.remove('active'));
-                event.target.classList.add('active');
+    async init() {
+        try {
+            console.log('Initializing shop module...');
+            
+            // Add event listeners for category buttons
+            this.categoryButtons.forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const category = event.target.getAttribute('data-category');
+                    this.loadShopItems(category);
+                    
+                    // Update active button
+                    this.categoryButtons.forEach(btn => btn.classList.remove('active'));
+                    event.target.classList.add('active');
+                });
             });
-        });
-        
-        // Load initial shop items
-        this.loadShopItems(this.currentCategory);
-        
-        // Add event listener for confirm purchase button
-        const confirmPurchaseBtn = document.getElementById('confirm-purchase-btn');
-        if (confirmPurchaseBtn) {
-            confirmPurchaseBtn.addEventListener('click', () => this.confirmPurchase());
+            
+            // Add event listener for confirm purchase button
+            const confirmPurchaseBtn = document.getElementById('confirm-purchase-btn');
+            if (confirmPurchaseBtn) {
+                confirmPurchaseBtn.addEventListener('click', () => this.confirmPurchase());
+            }
+            
+            // Load initial shop items
+            try {
+                await this.loadShopItems(this.currentCategory);
+            } catch (loadError) {
+                console.error('Failed to load initial shop items:', loadError);
+                // Continue initialization even if loading shop items fails
+                this.items = [];
+            }
+            
+            console.log('Shop module initialized successfully');
+            return true;
+        } catch (error) {
+            console.error('Error initializing shop module:', error);
+            // Don't throw here, just log the error
+            // This allows the game to continue loading even if shop fails
+            this.items = [];
+            return false;
         }
     }
 

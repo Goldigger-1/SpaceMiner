@@ -15,10 +15,21 @@ class Profile {
 
     /**
      * Initialize profile module
+     * @returns {Promise} - Promise that resolves when initialization is complete
      */
-    init() {
-        // Load profile data
-        this.loadProfile();
+    async init() {
+        try {
+            console.log('Initializing profile module...');
+            // Load profile data
+            await this.loadProfile();
+            console.log('Profile module initialized successfully');
+            return true;
+        } catch (error) {
+            console.error('Error initializing profile module:', error);
+            // Don't throw here, just log the error
+            // This allows the game to continue loading even if profile fails
+            return false;
+        }
     }
 
     /**
@@ -28,17 +39,32 @@ class Profile {
         try {
             ui.showLoadingScreen();
             
+            console.log('Loading profile data...');
             const profile = await api.getProfile();
+            console.log('Profile data received:', profile);
+            
+            if (!profile) {
+                console.warn('Empty profile data received');
+                ui.hideLoadingScreen();
+                return;
+            }
+            
             this.updateProfileDisplay(profile);
             
             // Load expedition history
-            await this.loadExpeditionHistory();
+            try {
+                await this.loadExpeditionHistory();
+            } catch (historyError) {
+                console.error('Failed to load expedition history:', historyError);
+                // Continue even if history loading fails
+            }
             
             ui.hideLoadingScreen();
         } catch (error) {
             ui.hideLoadingScreen();
             console.error('Error loading profile:', error);
             ui.showError('Failed to load profile data');
+            throw error; // Re-throw to be caught by init()
         }
     }
 
