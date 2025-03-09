@@ -8,7 +8,14 @@ const { verifyToken } = require('../middleware/auth');
 const authenticateTelegram = async (req, res, next) => {
   try {
     console.log('Telegram authentication request received:', req.body);
-    const { telegram_id, username, auth_date } = req.body;
+    const { telegram_id, username, auth_date, initData } = req.body;
+    
+    // Log the received initData if available
+    if (initData) {
+      console.log(`Received Telegram initData: ${initData.substring(0, 50)}...`);
+    } else {
+      console.log('No Telegram initData received in request');
+    }
     
     // Validate required fields
     if (!telegram_id) {

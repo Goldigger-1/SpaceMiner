@@ -20,7 +20,20 @@ class API {
         
         // Safely access Telegram WebApp data
         try {
+            // First try to get from WebApp object
             this.telegramInitData = window.Telegram?.WebApp?.initData || '';
+            
+            // If not available, try to get from localStorage
+            if (!this.telegramInitData) {
+                this.telegramInitData = localStorage.getItem('telegramInitData') || '';
+                console.log('Retrieved Telegram initData from localStorage');
+            }
+            
+            if (this.telegramInitData) {
+                console.log('Telegram initData available:', this.telegramInitData.substring(0, 50) + '...');
+            } else {
+                console.warn('No Telegram initData available');
+            }
         } catch (error) {
             console.error('Failed to access Telegram WebApp data:', error);
             this.telegramInitData = '';
@@ -85,7 +98,7 @@ class API {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': this.token ? `Bearer ${this.token}` : '',
-                    'Telegram-Data': this.telegramInitData
+                    'Telegram-Data': this.telegramInitData || ''
                 },
                 credentials: 'include' // Include cookies for cross-origin requests
             };
@@ -112,21 +125,27 @@ class API {
             // Handle authentication errors
             if (response.status === 401) {
                 console.error('Authentication failed (401 Unauthorized)');
-                this.clearToken();
                 
-                // Try to re-authenticate with Telegram if available
-                if (window.Telegram?.WebApp?.initDataUnsafe?.user && !endpoint.includes('/auth/login')) {
-                    console.log('Attempting to re-authenticate with Telegram...');
-                    try {
-                        await this.authenticateTelegram();
-                        console.log('Re-authentication successful, retrying original request');
-                        return this.request(endpoint, method, data);
-                    } catch (authError) {
-                        console.error('Re-authentication failed:', authError);
+                // Only clear token if not trying to authenticate
+                if (!endpoint.includes('/auth/login')) {
+                    this.clearToken();
+                    
+                    // Try to re-authenticate with Telegram if available
+                    if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+                        console.log('Attempting to re-authenticate with Telegram...');
+                        try {
+                            await this.authenticateTelegram();
+                            console.log('Re-authentication successful, retrying original request');
+                            return this.request(endpoint, method, data);
+                        } catch (authError) {
+                            console.error('Re-authentication failed:', authError);
+                            throw new Error('Authentication failed. Please log in again.');
+                        }
+                    } else {
                         throw new Error('Authentication failed. Please log in again.');
                     }
                 } else {
-                    throw new Error('Authentication failed. Please log in again.');
+                    throw new Error('Authentication failed. Invalid credentials.');
                 }
             }
             
@@ -226,7 +245,8 @@ class API {
                 telegramUser = {
                     telegram_id: user.id.toString(),
                     username: user.username || `user_${user.id}`,
-                    auth_date: Math.floor(Date.now() / 1000)
+                    auth_date: Math.floor(Date.now() / 1000),
+                    initData: window.Telegram.WebApp.initData // Include the full initData
                 };
                 
                 console.log('Prepared user data for authentication:', telegramUser);
@@ -246,6 +266,14 @@ class API {
         if (result.token) {
             console.log('Setting token from authentication response');
             this.setToken(result.token);
+            
+            // Store Telegram data for future requests
+            this.telegramInitData = window.Telegram?.WebApp?.initData || '';
+            try {
+                localStorage.setItem('telegramInitData', this.telegramInitData);
+            } catch (error) {
+                console.error('Failed to save Telegram initData to localStorage:', error);
+            }
         } else {
             console.error('No token received from server');
             throw new Error('Authentication failed - no token received');

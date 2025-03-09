@@ -2,7 +2,24 @@ const jwt = require('jsonwebtoken');
 
 // Middleware to verify JWT token
 const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
+  // Try to get token from Authorization header
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+  
+  // Get Telegram data if available
+  const telegramData = req.headers['telegram-data'] || '';
+  
+  // Log authentication attempt
+  console.log(`Authentication attempt: Token ${token ? 'provided' : 'missing'}, Telegram data ${telegramData ? 'provided' : 'missing'}`);
+  
+  // If no token but Telegram data is available, try to authenticate with Telegram
+  if (!token && telegramData) {
+    console.log('No token but Telegram data available, redirecting to Telegram authentication');
+    return res.status(401).json({ 
+      error: 'No token provided, but Telegram data found', 
+      code: 'TELEGRAM_AUTH_REQUIRED' 
+    });
+  }
   
   if (!token) {
     console.error('No token provided in request headers');
