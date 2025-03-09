@@ -26,7 +26,7 @@ const bot = new TelegramBot(token, { polling: true });
 // Bot commands
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  const webAppUrl = process.env.WEBAPP_URL || `https://your-app-url.com`;
+  const webAppUrl = process.env.WEBAPP_URL || `http://localhost:3000`;
   
   bot.sendMessage(chatId, 'Welcome to Space Miner! Click the button below to start your galactic exploration adventure.', {
     reply_markup: {
