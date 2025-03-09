@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { getAll, getOne } = require('../database/db');
+const db = require('../database/db');
 const { verifyToken } = require('../middleware/auth');
 
 // Get all planets
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const planets = await getAll('SELECT * FROM planets ORDER BY difficulty');
+    console.log('Getting all planets');
+    const planets = await db.all('SELECT * FROM planets ORDER BY distance ASC');
     res.json({ planets });
   } catch (error) {
     console.error('Error getting planets:', error);
@@ -17,14 +18,14 @@ router.get('/', verifyToken, async (req, res) => {
 // Get a specific planet
 router.get('/:id', verifyToken, async (req, res) => {
   try {
-    const planet = await getOne('SELECT * FROM planets WHERE id = ?', [req.params.id]);
+    const planet = await db.get('SELECT * FROM planets WHERE id = ?', [req.params.id]);
     
     if (!planet) {
       return res.status(404).json({ error: 'Planet not found' });
     }
     
     // Get resources available on this planet
-    const resources = await getAll(`
+    const resources = await db.all(`
       SELECT r.*, pr.spawn_rate 
       FROM resources r
       JOIN planet_resources pr ON r.id = pr.resource_id
@@ -45,7 +46,7 @@ router.get('/:id', verifyToken, async (req, res) => {
 // Get planet danger events
 router.get('/:id/dangers', verifyToken, async (req, res) => {
   try {
-    const planet = await getOne('SELECT * FROM planets WHERE id = ?', [req.params.id]);
+    const planet = await db.get('SELECT * FROM planets WHERE id = ?', [req.params.id]);
     
     if (!planet) {
       return res.status(404).json({ error: 'Planet not found' });

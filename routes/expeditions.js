@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAll, getOne, runQuery } = require('../database/db');
+const db = require('../database/db');
 const { verifyToken } = require('../middleware/auth');
 
 // Start a new expedition
@@ -13,14 +13,14 @@ router.post('/start', verifyToken, async (req, res) => {
     }
     
     // Check if planet exists
-    const planet = await getOne('SELECT * FROM planets WHERE id = ?', [planet_id]);
+    const planet = await db.get('SELECT * FROM planets WHERE id = ?', [planet_id]);
     
     if (!planet) {
       return res.status(404).json({ error: 'Planet not found' });
     }
     
     // Check if user has active expedition
-    const activeExpedition = await getOne(`
+    const activeExpedition = await db.get(`
       SELECT * FROM expeditions 
       WHERE user_id = ? AND status = 'active'
     `, [req.user.id]);
@@ -30,7 +30,7 @@ router.post('/start', verifyToken, async (req, res) => {
     }
     
     // Get user upgrades to calculate expedition time
-    const userUpgrades = await getAll(`
+    const userUpgrades = await db.all(`
       SELECT si.type, si.subtype, si.boost_value 
       FROM user_upgrades uu
       JOIN shop_items si ON uu.item_id = si.id
@@ -50,12 +50,12 @@ router.post('/start', verifyToken, async (req, res) => {
     const endTime = new Date(startTime.getTime() + (expeditionTime * 1000)); // Convert seconds to milliseconds
     
     // Create new expedition
-    const result = await runQuery(`
+    const result = await db.run(`
       INSERT INTO expeditions (user_id, planet_id, start_time, end_time, status, success)
       VALUES (?, ?, ?, ?, 'active', 0)
     `, [req.user.id, planet_id, startTime.toISOString(), endTime.toISOString()]);
     
-    const expedition = await getOne('SELECT * FROM expeditions WHERE id = ?', [result.id]);
+    const expedition = await db.get('SELECT * FROM expeditions WHERE id = ?', [result.lastID]);
     
     res.json({ 
       expedition,
@@ -71,7 +71,7 @@ router.post('/start', verifyToken, async (req, res) => {
 // Get active expedition
 router.get('/active', verifyToken, async (req, res) => {
   try {
-    const expedition = await getOne(`
+    const expedition = await db.get(`
       SELECT e.*, p.name as planet_name, p.image_url as planet_image, p.base_time
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
@@ -103,7 +103,7 @@ router.post('/mine', verifyToken, async (req, res) => {
     const { method } = req.body;
     
     // Check if user has active expedition
-    const expedition = await getOne(`
+    const expedition = await db.get(`
       SELECT e.*, p.resource_multiplier, p.danger_level
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
@@ -123,7 +123,7 @@ router.post('/mine', verifyToken, async (req, res) => {
     }
     
     // Get available resources on the planet
-    const planetResources = await getAll(`
+    const planetResources = await db.all(`
       SELECT r.*, pr.spawn_rate 
       FROM resources r
       JOIN planet_resources pr ON r.id = pr.resource_id
@@ -135,7 +135,7 @@ router.post('/mine', verifyToken, async (req, res) => {
     }
     
     // Get user upgrades
-    const userUpgrades = await getAll(`
+    const userUpgrades = await db.all(`
       SELECT si.type, si.subtype, si.boost_value 
       FROM user_upgrades uu
       JOIN shop_items si ON uu.item_id = si.id
@@ -192,7 +192,7 @@ router.post('/mine', verifyToken, async (req, res) => {
       });
       
       // Save mined resources to expedition
-      await runQuery(`
+      await db.run(`
         INSERT INTO expedition_resources (expedition_id, resource_id, quantity)
         VALUES (?, ?, ?)
       `, [expedition.id, selectedResource.id, quantity]);
@@ -206,11 +206,31 @@ router.post('/mine', verifyToken, async (req, res) => {
     
     if (dangerOccurred) {
       const dangerTypes = [
-        { type: 'temperature', name: 'Extreme Temperature', damage: 10 },
-        { type: 'radiation', name: 'Radiation Spike', damage: 15 },
-        { type: 'magnetic_storm', name: 'Magnetic Storm', damage: 20 },
-        { type: 'landslide', name: 'Landslide', damage: 25 },
-        { type: 'hostile_creature', name: 'Hostile Creature', damage: 30 }
+        { 
+          type: 'temperature', 
+          name: 'Extreme Temperature', 
+          damage: 10 
+        },
+        { 
+          type: 'radiation', 
+          name: 'Radiation Spike', 
+          damage: 15 
+        },
+        { 
+          type: 'magnetic_storm', 
+          name: 'Magnetic Storm', 
+          damage: 20 
+        },
+        { 
+          type: 'landslide', 
+          name: 'Landslide', 
+          damage: 25 
+        },
+        { 
+          type: 'hostile_creature', 
+          name: 'Hostile Creature', 
+          damage: 30 
+        }
       ];
       
       dangerEvent = dangerTypes[Math.floor(Math.random() * dangerTypes.length)];
@@ -233,7 +253,7 @@ router.post('/mine', verifyToken, async (req, res) => {
 router.post('/explore', verifyToken, async (req, res) => {
   try {
     // Check if user has active expedition
-    const expedition = await getOne(`
+    const expedition = await db.get(`
       SELECT e.*, p.resource_multiplier, p.danger_level
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
@@ -253,7 +273,7 @@ router.post('/explore', verifyToken, async (req, res) => {
     }
     
     // Get available resources on the planet
-    const planetResources = await getAll(`
+    const planetResources = await db.all(`
       SELECT r.*, pr.spawn_rate 
       FROM resources r
       JOIN planet_resources pr ON r.id = pr.resource_id
@@ -265,7 +285,7 @@ router.post('/explore', verifyToken, async (req, res) => {
     }
     
     // Get user upgrades
-    const userUpgrades = await getAll(`
+    const userUpgrades = await db.all(`
       SELECT si.type, si.subtype, si.boost_value 
       FROM user_upgrades uu
       JOIN shop_items si ON uu.item_id = si.id
@@ -320,7 +340,7 @@ router.post('/explore', verifyToken, async (req, res) => {
         });
         
         // Save found resources to expedition
-        await runQuery(`
+        await db.run(`
           INSERT INTO expedition_resources (expedition_id, resource_id, quantity)
           VALUES (?, ?, ?)
         `, [expedition.id, selectedResource.id, quantity]);
@@ -341,7 +361,7 @@ router.post('/explore', verifyToken, async (req, res) => {
 router.post('/check-danger', verifyToken, async (req, res) => {
   try {
     // Check if user has active expedition
-    const expedition = await getOne(`
+    const expedition = await db.get(`
       SELECT e.*, p.danger_level
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
@@ -421,7 +441,7 @@ router.post('/check-danger', verifyToken, async (req, res) => {
 router.post('/time-up', verifyToken, async (req, res) => {
   try {
     // Check if user has active expedition
-    const expedition = await getOne(`
+    const expedition = await db.get(`
       SELECT e.*, p.name as planet_name
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
@@ -441,14 +461,14 @@ router.post('/time-up', verifyToken, async (req, res) => {
     }
     
     // Mark expedition as timed out
-    await runQuery(`
+    await db.run(`
       UPDATE expeditions 
       SET status = 'timed_out', success = 0
       WHERE id = ?
     `, [expedition.id]);
     
     // Get user upgrades to check for insurance
-    const userUpgrades = await getAll(`
+    const userUpgrades = await db.all(`
       SELECT si.type, si.subtype, si.boost_value 
       FROM user_upgrades uu
       JOIN shop_items si ON uu.item_id = si.id
@@ -460,7 +480,7 @@ router.post('/time-up', verifyToken, async (req, res) => {
     const recoveryPercentage = insuranceUpgrade ? insuranceUpgrade.boost_value : 0;
     
     // Get collected resources
-    const collectedResources = await getAll(`
+    const collectedResources = await db.all(`
       SELECT er.resource_id, er.quantity, r.name, r.base_value, r.image_url, r.rarity
       FROM expedition_resources er
       JOIN resources r ON er.resource_id = r.id
@@ -477,21 +497,21 @@ router.post('/time-up', verifyToken, async (req, res) => {
         
         if (finalQuantity > 0) {
           // Check if user already has this resource
-          const existingInventory = await getOne(`
+          const existingInventory = await db.get(`
             SELECT * FROM user_inventory
             WHERE user_id = ? AND resource_id = ?
           `, [req.user.id, resource.resource_id]);
           
           if (existingInventory) {
             // Update existing inventory
-            await runQuery(`
+            await db.run(`
               UPDATE user_inventory
               SET quantity = quantity + ?
               WHERE id = ?
             `, [finalQuantity, existingInventory.id]);
           } else {
             // Add to user inventory
-            await runQuery(`
+            await db.run(`
               INSERT INTO user_inventory (user_id, resource_id, quantity)
               VALUES (?, ?, ?)
             `, [req.user.id, resource.resource_id, finalQuantity]);
@@ -508,7 +528,7 @@ router.post('/time-up', verifyToken, async (req, res) => {
       
       // Update user currency
       if (totalValue > 0) {
-        await runQuery(`
+        await db.run(`
           UPDATE users
           SET currency = currency + ?
           WHERE id = ?
@@ -535,7 +555,7 @@ router.post('/time-up', verifyToken, async (req, res) => {
 router.post('/return', verifyToken, async (req, res) => {
   try {
     // Check if user has active expedition
-    const expedition = await getOne(`
+    const expedition = await db.get(`
       SELECT e.*, p.name as planet_name
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
@@ -552,7 +572,7 @@ router.post('/return', verifyToken, async (req, res) => {
     const expeditionSuccess = now <= endTime;
     
     // Get user upgrades
-    const userUpgrades = await getAll(`
+    const userUpgrades = await db.all(`
       SELECT si.type, si.subtype, si.boost_value 
       FROM user_upgrades uu
       JOIN shop_items si ON uu.item_id = si.id
@@ -567,7 +587,7 @@ router.post('/return', verifyToken, async (req, res) => {
     }
     
     // Get collected resources
-    const collectedResources = await getAll(`
+    const collectedResources = await db.all(`
       SELECT er.resource_id, er.quantity, r.name, r.base_value, r.image_url
       FROM expedition_resources er
       JOIN resources r ON er.resource_id = r.id
@@ -578,7 +598,7 @@ router.post('/return', verifyToken, async (req, res) => {
     let totalValue = 0;
     
     // Update expedition status
-    await runQuery(`
+    await db.run(`
       UPDATE expeditions 
       SET status = 'completed', success = ?
       WHERE id = ?
@@ -595,21 +615,21 @@ router.post('/return', verifyToken, async (req, res) => {
         
         if (finalQuantity > 0) {
           // Check if user already has this resource
-          const existingInventory = await getOne(`
+          const existingInventory = await db.get(`
             SELECT * FROM user_inventory
             WHERE user_id = ? AND resource_id = ?
           `, [req.user.id, resource.resource_id]);
           
           if (existingInventory) {
             // Update existing inventory
-            await runQuery(`
+            await db.run(`
               UPDATE user_inventory
               SET quantity = quantity + ?
               WHERE id = ?
             `, [finalQuantity, existingInventory.id]);
           } else {
             // Add to user inventory
-            await runQuery(`
+            await db.run(`
               INSERT INTO user_inventory (user_id, resource_id, quantity)
               VALUES (?, ?, ?)
             `, [req.user.id, resource.resource_id, finalQuantity]);
@@ -627,7 +647,7 @@ router.post('/return', verifyToken, async (req, res) => {
       }
       
       // Update user currency
-      await runQuery(`
+      await db.run(`
         UPDATE users
         SET currency = currency + ?
         WHERE id = ?
@@ -639,21 +659,21 @@ router.post('/return', verifyToken, async (req, res) => {
       const year = currentDate.getFullYear();
       
       // Check if user already has a leaderboard entry for this month
-      const leaderboardEntry = await getOne(`
+      const leaderboardEntry = await db.get(`
         SELECT * FROM leaderboard
         WHERE user_id = ? AND month = ? AND year = ?
       `, [req.user.id, month, year]);
       
       if (leaderboardEntry) {
         // Update existing entry
-        await runQuery(`
+        await db.run(`
           UPDATE leaderboard
           SET score = score + ?
           WHERE id = ?
         `, [totalValue, leaderboardEntry.id]);
       } else {
         // Create new entry
-        await runQuery(`
+        await db.run(`
           INSERT INTO leaderboard (user_id, score, month, year)
           VALUES (?, ?, ?, ?)
         `, [req.user.id, totalValue, month, year]);
@@ -680,7 +700,7 @@ router.post('/return', verifyToken, async (req, res) => {
 // Get expedition history
 router.get('/history', verifyToken, async (req, res) => {
   try {
-    const expeditions = await getAll(`
+    const expeditions = await db.all(`
       SELECT e.*, p.name as planet_name, p.image_url as planet_image
       FROM expeditions e
       JOIN planets p ON e.planet_id = p.id
@@ -691,7 +711,7 @@ router.get('/history', verifyToken, async (req, res) => {
     
     // Get resources for each expedition
     for (const expedition of expeditions) {
-      expedition.resources = await getAll(`
+      expedition.resources = await db.all(`
         SELECT er.resource_id, er.quantity, r.name, r.base_value, r.image_url
         FROM expedition_resources er
         JOIN resources r ON er.resource_id = r.id

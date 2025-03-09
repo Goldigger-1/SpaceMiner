@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAll } = require('../database/db');
+const db = require('../database/db');
 const { verifyToken } = require('../middleware/auth');
 
 // Main leaderboard route - redirects to monthly by default
@@ -13,7 +13,7 @@ router.get('/', verifyToken, async (req, res) => {
       const targetMonth = currentDate.getMonth() + 1;
       const targetYear = currentDate.getFullYear();
       
-      const leaderboard = await getAll(`
+      const leaderboard = await db.all(`
         SELECT l.score, u.username, u.telegram_id
         FROM leaderboard l
         JOIN users u ON l.user_id = u.id
@@ -39,7 +39,7 @@ router.get('/', verifyToken, async (req, res) => {
         period: 'month'
       });
     } else if (period === 'all-time' || period === 'global') {
-      const leaderboard = await getAll(`
+      const leaderboard = await db.all(`
         SELECT SUM(l.score) as total_score, u.username, u.telegram_id
         FROM leaderboard l
         JOIN users u ON l.user_id = u.id
@@ -81,7 +81,7 @@ router.get('/monthly', verifyToken, async (req, res) => {
     const targetMonth = month ? parseInt(month) : currentDate.getMonth() + 1;
     const targetYear = year ? parseInt(year) : currentDate.getFullYear();
     
-    const leaderboard = await getAll(`
+    const leaderboard = await db.all(`
       SELECT l.score, u.username, u.telegram_id
       FROM leaderboard l
       JOIN users u ON l.user_id = u.id
@@ -114,7 +114,7 @@ router.get('/monthly', verifyToken, async (req, res) => {
 // Get global leaderboard (all-time)
 router.get('/global', verifyToken, async (req, res) => {
   try {
-    const leaderboard = await getAll(`
+    const leaderboard = await db.all(`
       SELECT SUM(l.score) as total_score, u.username, u.telegram_id
       FROM leaderboard l
       JOIN users u ON l.user_id = u.id
@@ -145,7 +145,7 @@ router.get('/global', verifyToken, async (req, res) => {
 // Get user's ranking history
 router.get('/my-history', verifyToken, async (req, res) => {
   try {
-    const rankings = await getAll(`
+    const rankings = await db.all(`
       SELECT l.month, l.year, l.score, 
         (SELECT COUNT(*) FROM leaderboard l2 WHERE l2.month = l.month AND l2.year = l.year AND l2.score > l.score) + 1 as rank
       FROM leaderboard l

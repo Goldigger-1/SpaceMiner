@@ -1,15 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { getAll, getOne, runQuery } = require('../database/db');
+const db = require('../database/db');
 const { verifyToken } = require('../middleware/auth');
 
 // Get fortune wheel rewards
 router.get('/rewards', verifyToken, async (req, res) => {
   try {
-    const rewards = await getAll(`
-      SELECT * FROM fortune_wheel_rewards
-      ORDER BY probability DESC
-    `);
+    const rewards = await db.all('SELECT * FROM fortune_wheel_rewards ORDER BY probability DESC');
     
     res.json({ rewards });
   } catch (error) {
@@ -24,7 +21,7 @@ router.post('/spin', verifyToken, async (req, res) => {
     const { payment_type } = req.body;
     
     // Get user data
-    const user = await getOne('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -39,11 +36,7 @@ router.post('/spin', verifyToken, async (req, res) => {
       }
       
       // Deduct premium currency
-      await runQuery(`
-        UPDATE users
-        SET premium_currency = premium_currency - ?
-        WHERE id = ?
-      `, [spinCost, req.user.id]);
+      await db.run('UPDATE users SET premium_currency = premium_currency - ? WHERE id = ?', [spinCost, req.user.id]);
     } else {
       // Real money payment
       // In a real implementation, this would be handled by a payment gateway
@@ -51,7 +44,7 @@ router.post('/spin', verifyToken, async (req, res) => {
     }
     
     // Get all rewards with their probabilities
-    const rewards = await getAll('SELECT * FROM fortune_wheel_rewards');
+    const rewards = await db.all('SELECT * FROM fortune_wheel_rewards');
     
     // Calculate total probability
     const totalProbability = rewards.reduce((sum, reward) => sum + reward.probability, 0);
@@ -76,10 +69,7 @@ router.post('/spin', verifyToken, async (req, res) => {
     }
     
     // Record the spin
-    await runQuery(`
-      INSERT INTO user_spins (user_id, reward_id, spin_date)
-      VALUES (?, ?, ?)
-    `, [req.user.id, selectedReward.id, new Date().toISOString()]);
+    await db.run('INSERT INTO user_spins (user_id, reward_id, spin_date) VALUES (?, ?, ?)', [req.user.id, selectedReward.id, new Date().toISOString()]);
     
     // Process the reward
     let rewardMessage = '';
@@ -87,22 +77,14 @@ router.post('/spin', verifyToken, async (req, res) => {
     switch (selectedReward.type) {
       case 'currency':
         // Add currency to user
-        await runQuery(`
-          UPDATE users
-          SET currency = currency + ?
-          WHERE id = ?
-        `, [selectedReward.value, req.user.id]);
+        await db.run('UPDATE users SET currency = currency + ? WHERE id = ?', [selectedReward.value, req.user.id]);
         
         rewardMessage = `You won ${selectedReward.value} in-game currency!`;
         break;
         
       case 'premium_currency':
         // Add premium currency to user
-        await runQuery(`
-          UPDATE users
-          SET premium_currency = premium_currency + ?
-          WHERE id = ?
-        `, [selectedReward.value, req.user.id]);
+        await db.run('UPDATE users SET premium_currency = premium_currency + ? WHERE id = ?', [selectedReward.value, req.user.id]);
         
         rewardMessage = `You won ${selectedReward.value} premium currency!`;
         break;
@@ -115,12 +97,7 @@ router.post('/spin', verifyToken, async (req, res) => {
         // Determine boost type (speed or capacity)
         const boostType = selectedReward.description.toLowerCase().includes('speed') ? 'speed' : 'capacity';
         
-        await runQuery(`
-          INSERT INTO user_upgrades (user_id, item_id, purchase_date, expiry_date, active)
-          VALUES (?, 
-            (SELECT id FROM shop_items WHERE type = 'temporary_boost' AND subtype = ? LIMIT 1), 
-            ?, ?, 1)
-        `, [req.user.id, boostType, new Date().toISOString(), expiryDate.toISOString()]);
+        await db.run('INSERT INTO user_upgrades (user_id, item_id, purchase_date, expiry_date, active) VALUES (?, (SELECT id FROM shop_items WHERE type = ? AND subtype = ? LIMIT 1), ?, ?, 1)', [req.user.id, boostType, boostType, new Date().toISOString(), expiryDate.toISOString()]);
         
         rewardMessage = `You won a ${selectedReward.description}!`;
         break;
@@ -130,9 +107,7 @@ router.post('/spin', verifyToken, async (req, res) => {
     }
     
     // Get updated user data
-    const updatedUser = await getOne(`
-      SELECT currency, premium_currency FROM users WHERE id = ?
-    `, [req.user.id]);
+    const updatedUser = await db.get('SELECT currency, premium_currency FROM users WHERE id = ?', [req.user.id]);
     
     res.json({
       success: true,
@@ -150,14 +125,7 @@ router.post('/spin', verifyToken, async (req, res) => {
 // Get user's spin history
 router.get('/history', verifyToken, async (req, res) => {
   try {
-    const history = await getAll(`
-      SELECT us.spin_date, fwr.name, fwr.description, fwr.type, fwr.value, fwr.image_url
-      FROM user_spins us
-      JOIN fortune_wheel_rewards fwr ON us.reward_id = fwr.id
-      WHERE us.user_id = ?
-      ORDER BY us.spin_date DESC
-      LIMIT 20
-    `, [req.user.id]);
+    const history = await db.all('SELECT us.spin_date, fwr.name, fwr.description, fwr.type, fwr.value, fwr.image_url FROM user_spins us JOIN fortune_wheel_rewards fwr ON us.reward_id = fwr.id WHERE us.user_id = ? ORDER BY us.spin_date DESC LIMIT 20', [req.user.id]);
     
     res.json({ history });
   } catch (error) {
@@ -194,16 +162,10 @@ router.post('/purchase-spins', verifyToken, async (req, res) => {
     const premiumCurrencyPerSpin = 10;
     const totalPremiumCurrency = selectedPackage.spins * premiumCurrencyPerSpin;
     
-    await runQuery(`
-      UPDATE users
-      SET premium_currency = premium_currency + ?
-      WHERE id = ?
-    `, [totalPremiumCurrency, req.user.id]);
+    await db.run('UPDATE users SET premium_currency = premium_currency + ? WHERE id = ?', [totalPremiumCurrency, req.user.id]);
     
     // Get updated user data
-    const updatedUser = await getOne(`
-      SELECT premium_currency FROM users WHERE id = ?
-    `, [req.user.id]);
+    const updatedUser = await db.get('SELECT premium_currency FROM users WHERE id = ?', [req.user.id]);
     
     res.json({
       success: true,
