@@ -371,9 +371,12 @@ class UI {
      * Hide loading screen
      */
     hideLoadingScreen() {
-        setTimeout(() => {
+        console.log('Hiding loading screen');
+        if (this.loadingScreen) {
             this.loadingScreen.classList.add('hidden');
-        }, CONFIG.GAME.ANIMATIONS.LOADING_DURATION);
+        } else {
+            console.error('Loading screen element not found');
+        }
     }
 
     /**

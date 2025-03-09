@@ -137,7 +137,10 @@ body {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 /* Cards and Containers */

@@ -183,7 +183,6 @@ async function initializeGame() {
                 })
                 .catch(error => {
                     console.error('Failed to initialize planets:', error);
-                    // Continue without throwing
                 })
         );
         
@@ -196,11 +195,10 @@ async function initializeGame() {
                 })
                 .catch(error => {
                     console.error('Failed to initialize expedition:', error);
-                    // Continue without throwing
                 })
         );
         
-        // Inventory initialization (critical)
+        // Inventory initialization
         initPromises.push(
             inventory.init()
                 .then(() => {
@@ -209,11 +207,10 @@ async function initializeGame() {
                 })
                 .catch(error => {
                     console.error('Failed to initialize inventory:', error);
-                    // Continue without throwing, use empty inventory
                 })
         );
         
-        // Shop initialization (critical)
+        // Shop initialization
         initPromises.push(
             shop.init()
                 .then(() => {
@@ -222,7 +219,6 @@ async function initializeGame() {
                 })
                 .catch(error => {
                     console.error('Failed to initialize shop:', error);
-                    // Continue without throwing, use empty shop
                 })
         );
         
@@ -235,11 +231,10 @@ async function initializeGame() {
                 })
                 .catch(error => {
                     console.error('Failed to initialize ranking:', error);
-                    // Continue without throwing
                 })
         );
         
-        // Profile initialization (critical)
+        // Profile initialization
         initPromises.push(
             profile.init()
                 .then(() => {
@@ -248,7 +243,6 @@ async function initializeGame() {
                 })
                 .catch(error => {
                     console.error('Failed to initialize profile:', error);
-                    // Continue without throwing, use default profile
                 })
         );
         
@@ -261,11 +255,10 @@ async function initializeGame() {
                 })
                 .catch(error => {
                     console.error('Failed to initialize fortune wheel:', error);
-                    // Continue without throwing
                 })
         );
         
-        // Wait for all initialization promises to settle (not necessarily resolve)
+        // Wait for all initialization promises to settle
         await Promise.allSettled(initPromises);
         
         // Check initialization status and log summary
@@ -285,14 +278,22 @@ async function initializeGame() {
         }
         
         console.log('Game initialization completed');
-        ui.hideLoadingScreen();
         
-        // Show home tab
-        ui.showTab('home');
+        // Force hide loading screen
+        setTimeout(() => {
+            console.log('Forcing loading screen to hide');
+            ui.hideLoadingScreen();
+            ui.showTab('home');
+        }, 500);
     } catch (error) {
         console.error('Unexpected error during game initialization:', error);
         ui.showError('Failed to initialize game: ' + error.message);
-        ui.hideLoadingScreen();
+        
+        // Force hide loading screen even on error
+        setTimeout(() => {
+            console.log('Forcing loading screen to hide after error');
+            ui.hideLoadingScreen();
+        }, 500);
     }
 }
 
