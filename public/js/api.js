@@ -188,7 +188,26 @@ class API {
      * @param {string} initData - Telegram init data
      */
     async authenticateTelegram(initData) {
-        const result = await this.request('/auth/login', 'POST', { telegram_data: initData });
+        // Parse Telegram WebApp init data
+        let telegramUser = {};
+        
+        try {
+            if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+                const user = window.Telegram.WebApp.initDataUnsafe.user;
+                telegramUser = {
+                    telegram_id: user.id.toString(),
+                    username: user.username || `user_${user.id}`,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    auth_date: Math.floor(Date.now() / 1000),
+                    hash: 'placeholder' // In a real app, this would be verified on the server
+                };
+            }
+        } catch (error) {
+            console.error('Failed to parse Telegram WebApp data:', error);
+        }
+        
+        const result = await this.request('/auth/login', 'POST', telegramUser);
         if (result.token) {
             this.setToken(result.token);
         }

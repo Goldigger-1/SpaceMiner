@@ -3,6 +3,74 @@ const router = express.Router();
 const { getAll } = require('../database/db');
 const { verifyToken } = require('../middleware/auth');
 
+// Main leaderboard route - redirects to monthly by default
+router.get('/', verifyToken, async (req, res) => {
+  try {
+    const { period = 'month' } = req.query;
+    
+    if (period === 'month' || period === 'monthly') {
+      const currentDate = new Date();
+      const targetMonth = currentDate.getMonth() + 1;
+      const targetYear = currentDate.getFullYear();
+      
+      const leaderboard = await getAll(`
+        SELECT l.score, u.username, u.telegram_id
+        FROM leaderboard l
+        JOIN users u ON l.user_id = u.id
+        WHERE l.month = ? AND l.year = ?
+        ORDER BY l.score DESC
+        LIMIT 100
+      `, [targetMonth, targetYear]);
+      
+      // Get user's rank if they're on the leaderboard
+      let userRank = null;
+      for (let i = 0; i < leaderboard.length; i++) {
+        if (leaderboard[i].telegram_id === req.telegram_id) {
+          userRank = i + 1;
+          break;
+        }
+      }
+      
+      return res.json({ 
+        leaderboard,
+        userRank,
+        month: targetMonth,
+        year: targetYear,
+        period: 'month'
+      });
+    } else if (period === 'all-time' || period === 'global') {
+      const leaderboard = await getAll(`
+        SELECT SUM(l.score) as total_score, u.username, u.telegram_id
+        FROM leaderboard l
+        JOIN users u ON l.user_id = u.id
+        GROUP BY l.user_id
+        ORDER BY total_score DESC
+        LIMIT 100
+      `);
+      
+      // Get user's rank if they're on the leaderboard
+      let userRank = null;
+      for (let i = 0; i < leaderboard.length; i++) {
+        if (leaderboard[i].telegram_id === req.telegram_id) {
+          userRank = i + 1;
+          break;
+        }
+      }
+      
+      return res.json({ 
+        leaderboard,
+        userRank,
+        period: 'all-time'
+      });
+    } else {
+      return res.status(400).json({ error: 'Invalid period parameter. Use "month" or "all-time".' });
+    }
+  } catch (error) {
+    console.error('Error getting leaderboard:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get monthly leaderboard
 router.get('/monthly', verifyToken, async (req, res) => {
   try {

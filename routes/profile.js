@@ -139,6 +139,27 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
+// Get user inventory (separate endpoint)
+router.get('/inventory', verifyToken, async (req, res) => {
+  try {
+    // Get user inventory
+    const inventory = await getAll(`
+      SELECT 
+        ui.resource_id, ui.quantity,
+        r.name, r.description, r.rarity, r.base_value, r.image_url
+      FROM user_inventory ui
+      JOIN resources r ON ui.resource_id = r.id
+      WHERE ui.user_id = ?
+      ORDER BY r.rarity DESC, r.name
+    `, [req.userId]);
+    
+    res.json({ inventory });
+  } catch (error) {
+    console.error('Error getting user inventory:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Update user profile
 router.put('/', verifyToken, async (req, res) => {
   try {
