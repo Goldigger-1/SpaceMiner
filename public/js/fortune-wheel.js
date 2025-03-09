@@ -101,59 +101,83 @@ class FortuneWheel {
      * Draw the fortune wheel
      */
     drawWheel() {
-        if (!this.wheelCanvas || !this.wheelCtx || !this.rewards || this.rewards.length === 0) {
-            console.error('Cannot draw wheel: missing canvas, context, or rewards');
+        // Check if all required elements are available
+        if (!this.wheelCanvas) {
+            console.log('Cannot draw wheel: canvas element not found');
             return;
         }
         
-        const centerX = this.wheelCenterX;
-        const centerY = this.wheelCenterY;
-        const radius = this.wheelRadius;
-        const segmentCount = this.rewards.length;
-        const segmentAngle = 2 * Math.PI / segmentCount;
-        
-        // Draw wheel background
-        this.wheelCtx.beginPath();
-        this.wheelCtx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-        this.wheelCtx.fillStyle = '#333';
-        this.wheelCtx.fill();
-        this.wheelCtx.lineWidth = 2;
-        this.wheelCtx.strokeStyle = '#555';
-        this.wheelCtx.stroke();
-        
-        // Draw segments
-        for (let i = 0; i < segmentCount; i++) {
-            const segment = this.rewards[i];
-            const startAngle = i * segmentAngle;
-            const endAngle = (i + 1) * segmentAngle;
-            
-            // Draw segment
-            this.wheelCtx.beginPath();
-            this.wheelCtx.moveTo(centerX, centerY);
-            this.wheelCtx.arc(centerX, centerY, radius, startAngle, endAngle);
-            this.wheelCtx.closePath();
-            
-            // Set segment color based on rarity
-            const segmentColor = this.getSegmentColor(segment.rarity || 'common');
-            this.wheelCtx.fillStyle = segmentColor;
-            this.wheelCtx.fill();
-            
-            this.wheelCtx.lineWidth = 1;
-            this.wheelCtx.strokeStyle = '#fff';
-            this.wheelCtx.stroke();
-            
-            // Draw segment content
-            this.drawSegmentContent(segment, startAngle, endAngle, radius);
+        if (!this.wheelCtx) {
+            // Try to initialize the context if it wasn't available before
+            if (this.wheelCanvas.getContext) {
+                this.wheelCtx = this.wheelCanvas.getContext('2d');
+                this.wheelCanvas.width = 300;
+                this.wheelCanvas.height = 300;
+            } else {
+                console.log('Cannot draw wheel: canvas context not available');
+                return;
+            }
         }
         
-        // Draw center circle
-        this.wheelCtx.beginPath();
-        this.wheelCtx.arc(centerX, centerY, radius * 0.1, 0, 2 * Math.PI);
-        this.wheelCtx.fillStyle = '#fff';
-        this.wheelCtx.fill();
-        this.wheelCtx.lineWidth = 2;
-        this.wheelCtx.strokeStyle = '#555';
-        this.wheelCtx.stroke();
+        if (!this.rewards || this.rewards.length === 0) {
+            console.log('Cannot draw wheel: rewards not loaded yet');
+            return;
+        }
+        
+        try {
+            const centerX = this.wheelCenterX;
+            const centerY = this.wheelCenterY;
+            const radius = this.wheelRadius;
+            const segmentCount = this.rewards.length;
+            const segmentAngle = 2 * Math.PI / segmentCount;
+            
+            // Draw wheel background
+            this.wheelCtx.beginPath();
+            this.wheelCtx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            this.wheelCtx.fillStyle = '#333';
+            this.wheelCtx.fill();
+            this.wheelCtx.lineWidth = 2;
+            this.wheelCtx.strokeStyle = '#555';
+            this.wheelCtx.stroke();
+            
+            // Draw segments
+            for (let i = 0; i < segmentCount; i++) {
+                const segment = this.rewards[i];
+                const startAngle = i * segmentAngle;
+                const endAngle = (i + 1) * segmentAngle;
+                
+                // Draw segment
+                this.wheelCtx.beginPath();
+                this.wheelCtx.moveTo(centerX, centerY);
+                this.wheelCtx.arc(centerX, centerY, radius, startAngle, endAngle);
+                this.wheelCtx.closePath();
+                
+                // Set segment color based on rarity
+                const segmentColor = this.getSegmentColor(segment.rarity || 'common');
+                this.wheelCtx.fillStyle = segmentColor;
+                this.wheelCtx.fill();
+                
+                this.wheelCtx.lineWidth = 1;
+                this.wheelCtx.strokeStyle = '#fff';
+                this.wheelCtx.stroke();
+                
+                // Draw segment content
+                this.drawSegmentContent(segment, startAngle, endAngle, radius);
+            }
+            
+            // Draw center circle
+            this.wheelCtx.beginPath();
+            this.wheelCtx.arc(centerX, centerY, radius * 0.1, 0, 2 * Math.PI);
+            this.wheelCtx.fillStyle = '#fff';
+            this.wheelCtx.fill();
+            this.wheelCtx.lineWidth = 2;
+            this.wheelCtx.strokeStyle = '#555';
+            this.wheelCtx.stroke();
+            
+            console.log('Fortune wheel drawn successfully with', segmentCount, 'segments');
+        } catch (error) {
+            console.error('Error drawing fortune wheel:', error);
+        }
     }
     
     /**

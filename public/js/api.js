@@ -96,23 +96,16 @@ class API {
             const options = {
                 method,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': this.token ? `Bearer ${this.token}` : '',
-                    'Telegram-Data': this.telegramInitData || ''
+                    'Content-Type': 'application/json'
                 },
                 credentials: 'include' // Include cookies for cross-origin requests
             };
             
-            if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
-                options.body = JSON.stringify(data);
-            }
-            
-            console.log(`Request headers:`, JSON.stringify(options.headers));
-            
-            // Debug token
-            if (this.token) {
+            // Only add Authorization header if we have a token and we're not trying to authenticate
+            if (this.token && !endpoint.includes('/auth/login')) {
+                options.headers['Authorization'] = `Bearer ${this.token}`;
                 console.log(`Using token for request: ${this.token.substring(0, 20)}...`);
-            } else {
+            } else if (!endpoint.includes('/auth/login')) {
                 console.warn('No token available for request');
                 
                 // Try to retrieve token from localStorage again
@@ -121,12 +114,23 @@ class API {
                     if (storedToken && storedToken !== this.token) {
                         console.log('Retrieved token from localStorage');
                         this.token = storedToken;
-                        options.headers.Authorization = `Bearer ${this.token}`;
+                        options.headers['Authorization'] = `Bearer ${this.token}`;
                     }
                 } catch (error) {
                     console.error('Failed to retrieve token from localStorage:', error);
                 }
             }
+            
+            // Add Telegram data if available
+            if (this.telegramInitData) {
+                options.headers['Telegram-Data'] = this.telegramInitData;
+            }
+            
+            if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+                options.body = JSON.stringify(data);
+            }
+            
+            console.log(`Request headers:`, JSON.stringify(options.headers));
             
             if (options.body) {
                 console.log(`Request body:`, options.body.length > 1000 ? options.body.substring(0, 1000) + '...' : options.body);
@@ -147,7 +151,7 @@ class API {
                 console.error('Authentication failed (401 Unauthorized)');
                 
                 // Only clear token if not trying to authenticate
-                if (!endpoint.includes('/auth/')) {
+                if (!endpoint.includes('/auth/login')) {
                     this.clearToken();
                     
                     // Try to re-authenticate with Telegram if available
@@ -159,14 +163,18 @@ class API {
                             return this.request(endpoint, method, data);
                         } catch (authError) {
                             console.error('Re-authentication failed:', authError);
-                            throw new Error('Authentication failed. Please log in again.');
+                            throw new Error('Authentication failed. Please refresh the page and try again.');
                         }
                     } else {
-                        throw new Error('Authentication failed. Please log in again.');
+                        throw new Error('Authentication failed. Please refresh the page and try again.');
                     }
                 } else {
                     throw new Error('Authentication failed. Invalid credentials.');
                 }
+            } else if (response.status === 404) {
+                // Special handling for 404 errors
+                console.error(`API endpoint not found: ${url}`);
+                throw new Error(`API endpoint not found: ${endpoint}`);
             }
             
             // Parse response
@@ -290,18 +298,44 @@ class API {
         }
         
         console.log('Sending authentication request to server');
-        const result = await this.request('/auth/login', 'POST', telegramUser);
-        console.log('Authentication response:', result);
-        
-        if (result.token) {
-            console.log('Setting token from authentication response');
-            this.setToken(result.token);
-        } else {
-            console.error('No token received from server');
-            throw new Error('Authentication failed - no token received');
+        try {
+            // Make sure we're not sending the token in this request since we're trying to authenticate
+            const originalToken = this.token;
+            this.token = null;
+            
+            const result = await this.request('/auth/login', 'POST', telegramUser);
+            console.log('Authentication response:', result);
+            
+            if (result && result.token) {
+                console.log('Setting token from authentication response');
+                this.setToken(result.token);
+                
+                // Verify the token works by making a test request
+                try {
+                    await this.request('/auth/ping');
+                    console.log('Token verification successful');
+                } catch (verifyError) {
+                    console.error('Token verification failed:', verifyError);
+                    // If verification fails, restore the original token (if any)
+                    if (originalToken) {
+                        this.token = originalToken;
+                    }
+                    throw new Error('Token verification failed');
+                }
+                
+                return result;
+            } else {
+                console.error('No token received from server');
+                // If no token received, restore the original token (if any)
+                if (originalToken) {
+                    this.token = originalToken;
+                }
+                throw new Error('Authentication failed - no token received');
+            }
+        } catch (error) {
+            console.error('Authentication request failed:', error);
+            throw error;
         }
-        
-        return result;
     }
 
     /**

@@ -914,23 +914,21 @@ class UI {
             
             const result = await api.purchaseSpins(packageId);
             
-            if (result && result.success) {
-                // Update spins count
-                this.spins = result.premium_currency / 10; // Assuming 10 premium currency per spin
-                
-                if (this.spinsRemaining) {
-                    this.spinsRemaining.textContent = this.spins;
-                }
-                
-                // Update premium currency display
-                if (this.premiumCurrencyEl) {
-                    this.premiumCurrencyEl.textContent = result.premium_currency;
-                }
-                
-                this.hideLoadingScreen();
-                this.hideModal(document.getElementById('buy-spins-modal'));
-                this.showSuccess(`Successfully purchased ${packageId === 'single' ? '1 spin' : packageId === 'pack5' ? '5 spins' : '10 spins'}`);
+            // Update spins count
+            this.spins = result.premium_currency / 10; // Assuming 10 premium currency per spin
+            
+            if (this.spinsRemaining) {
+                this.spinsRemaining.textContent = this.spins;
             }
+            
+            // Update premium currency display
+            if (this.premiumCurrencyEl) {
+                this.premiumCurrencyEl.textContent = result.premium_currency;
+            }
+            
+            this.hideLoadingScreen();
+            this.hideModal(document.getElementById('buy-spins-modal'));
+            this.showSuccess(`Successfully purchased ${packageId === 'single' ? '1 spin' : packageId === 'pack5' ? '5 spins' : '10 spins'}`);
         } catch (error) {
             this.hideLoadingScreen();
             console.error('Error purchasing spins:', error);
@@ -2012,9 +2010,16 @@ class UI {
             this.fortuneWheelCanvas.width = size;
             this.fortuneWheelCanvas.height = size;
             
-            // Redraw wheel if the fortune wheel module is initialized
-            if (typeof fortuneWheel !== 'undefined' && fortuneWheel.drawWheel) {
-                fortuneWheel.drawWheel();
+            // Redraw wheel if the fortune wheel module is initialized and has rewards
+            if (typeof fortuneWheel !== 'undefined' && 
+                fortuneWheel.drawWheel && 
+                fortuneWheel.rewards && 
+                fortuneWheel.rewards.length > 0) {
+                try {
+                    fortuneWheel.drawWheel();
+                } catch (error) {
+                    console.log('Could not redraw fortune wheel:', error.message);
+                }
             }
         }
         

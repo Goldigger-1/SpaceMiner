@@ -23,7 +23,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Handle authentication
             try {
                 console.log('Attempting Telegram authentication...');
-                // Use the WebApp user data directly instead of initData
+                
+                // Store Telegram initData in localStorage for future use
+                if (webApp.initData) {
+                    try {
+                        localStorage.setItem('telegramInitData', webApp.initData);
+                        console.log('Stored Telegram initData in localStorage');
+                    } catch (storageError) {
+                        console.warn('Failed to store Telegram initData in localStorage:', storageError);
+                    }
+                }
+                
+                // Use the WebApp user data directly
                 if (webApp.initDataUnsafe && webApp.initDataUnsafe.user) {
                     const user = webApp.initDataUnsafe.user;
                     console.log('Telegram user data found:', user);
@@ -39,16 +50,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                         console.error('Authentication error:', authError);
                         ui.hideLoadingScreen();
                         ui.showError('Failed to authenticate with Telegram: ' + authError.message);
+                        
+                        // Try to recover by checking if we have a stored token
+                        const storedToken = localStorage.getItem('token');
+                        if (storedToken) {
+                            console.log('Attempting to recover with stored token...');
+                            try {
+                                api.setToken(storedToken);
+                                // Verify the token works
+                                await api.request('/auth/ping');
+                                console.log('Recovery successful, initializing game...');
+                                await initializeGame();
+                            } catch (recoveryError) {
+                                console.error('Recovery failed:', recoveryError);
+                                showLoginPrompt();
+                            }
+                        } else {
+                            showLoginPrompt();
+                        }
                     }
                 } else {
                     console.error('No Telegram user data found in WebApp');
                     ui.hideLoadingScreen();
                     ui.showError('Failed to get Telegram user data');
+                    showLoginPrompt();
                 }
             } catch (error) {
                 console.error('Error authenticating with Telegram:', error);
                 ui.hideLoadingScreen();
                 ui.showError('Failed to authenticate with Telegram: ' + error.message);
+                showLoginPrompt();
             }
             
             // Set up back button handler
@@ -81,10 +112,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.log('Authenticated with token');
                     await initializeGame();
                 } else {
-                    // Redirect to login page or show login modal
-                    console.log('No authentication token found');
-                    ui.hideLoadingScreen();
-                    showLoginPrompt();
+                    // Check if we have a stored token
+                    const storedToken = localStorage.getItem('token');
+                    if (storedToken) {
+                        console.log('Found stored token, attempting to authenticate...');
+                        try {
+                            api.setToken(storedToken);
+                            // Verify the token works
+                            await api.request('/auth/ping');
+                            console.log('Authentication with stored token successful');
+                            await initializeGame();
+                        } catch (tokenError) {
+                            console.error('Stored token invalid:', tokenError);
+                            ui.hideLoadingScreen();
+                            showLoginPrompt();
+                        }
+                    } else {
+                        // Redirect to login page or show login modal
+                        console.log('No authentication token found');
+                        ui.hideLoadingScreen();
+                        showLoginPrompt();
+                    }
                 }
             } catch (error) {
                 console.error('Error authenticating:', error);
