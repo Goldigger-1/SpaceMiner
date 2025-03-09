@@ -24,42 +24,68 @@ class FortuneWheel {
 
     /**
      * Initialize fortune wheel module
+     * @returns {Promise} - Promise that resolves when initialization is complete
      */
-    init() {
-        // Initialize canvas if available
-        if (this.wheelCanvas && this.wheelCanvas.getContext) {
-            this.wheelCtx = this.wheelCanvas.getContext('2d');
-            this.wheelCanvas.width = 300;
-            this.wheelCanvas.height = 300;
+    async init() {
+        try {
+            console.log('Initializing fortune wheel module...');
+            
+            // Initialize canvas if available
+            if (this.wheelCanvas && this.wheelCanvas.getContext) {
+                this.wheelCtx = this.wheelCanvas.getContext('2d');
+                this.wheelCanvas.width = 300;
+                this.wheelCanvas.height = 300;
+            } else {
+                console.warn('Fortune wheel canvas not available');
+            }
+            
+            // Add event listeners
+            if (this.spinBtn) {
+                this.spinBtn.addEventListener('click', () => this.spinWheel());
+            }
+            
+            if (this.buySpinsButtons && this.buySpinsButtons.length > 0) {
+                this.buySpinsButtons.forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const packageType = event.target.getAttribute('data-package');
+                        this.purchaseSpins(packageType);
+                    });
+                });
+            }
+            
+            // Add event listener for continue button in wheel result modal
+            const wheelContinueBtn = document.getElementById('wheel-continue-btn');
+            if (wheelContinueBtn) {
+                wheelContinueBtn.addEventListener('click', () => {
+                    ui.hideModal('wheel-result-modal');
+                });
+            }
+            
+            // Load wheel rewards
+            try {
+                await this.loadFortuneWheelRewards();
+            } catch (rewardsError) {
+                console.error('Failed to load wheel rewards:', rewardsError);
+                // Continue initialization even if loading rewards fails
+                this.rewards = CONFIG.FORTUNE_WHEEL.DEFAULT_REWARDS || [];
+            }
+            
+            // Update wheel display
+            try {
+                this.drawWheel();
+                this.updateSpinsDisplay();
+            } catch (displayError) {
+                console.error('Error updating wheel display:', displayError);
+            }
+            
+            console.log('Fortune wheel module initialized successfully');
+            return true;
+        } catch (error) {
+            console.error('Error initializing fortune wheel module:', error);
+            // Don't throw here, just log the error
+            // This allows the game to continue loading even if fortune wheel fails
+            return false;
         }
-        
-        // Add event listeners
-        if (this.spinBtn) {
-            this.spinBtn.addEventListener('click', () => this.spinWheel());
-        }
-        
-        this.buySpinsButtons.forEach(button => {
-            button.addEventListener('click', (event) => {
-                const packageType = event.target.getAttribute('data-package');
-                this.purchaseSpins(packageType);
-            });
-        });
-        
-        // Add event listener for continue button in wheel result modal
-        const wheelContinueBtn = document.getElementById('wheel-continue-btn');
-        if (wheelContinueBtn) {
-            wheelContinueBtn.addEventListener('click', () => {
-                const resultModal = document.getElementById('wheel-result-modal');
-                if (resultModal) {
-                    ui.hideModal(resultModal);
-                    resultModal.classList.remove('show');
-                    resultModal.style.display = 'none';
-                }
-            });
-        }
-        
-        // Load fortune wheel rewards
-        this.loadFortuneWheelRewards();
     }
 
     /**
@@ -67,33 +93,36 @@ class FortuneWheel {
      */
     async loadFortuneWheelRewards() {
         try {
-            ui.showLoadingScreen();
+            console.log('Loading fortune wheel rewards...');
             
             const data = await api.getFortuneWheelRewards();
+            console.log('Fortune wheel rewards data:', data);
+            
+            if (!data || !data.rewards) {
+                console.warn('Invalid fortune wheel rewards data:', data);
+                this.rewards = CONFIG.FORTUNE_WHEEL.DEFAULT_REWARDS || [];
+                this.spins = 0;
+                return;
+            }
+            
             this.rewards = data.rewards || [];
             this.spins = data.spins || 0;
             
-            // Update spins remaining
-            if (this.spinsRemaining) {
-                this.spinsRemaining.textContent = this.spins;
+            // Draw the wheel with the loaded rewards
+            if (this.wheelCtx) {
+                this.drawWheel();
             }
             
-            // Update spin cost
-            if (this.spinCost && data.spin_cost) {
-                this.spinCost.textContent = data.spin_cost;
-            }
-            
-            // Render wheel
-            this.drawWheel();
-            
-            // Render prizes list
-            this.renderPrizesList();
-            
-            ui.hideLoadingScreen();
+            this.updateSpinsDisplay();
+            console.log('Fortune wheel rewards loaded successfully');
         } catch (error) {
-            ui.hideLoadingScreen();
             console.error('Error loading fortune wheel rewards:', error);
-            ui.showError('Failed to load fortune wheel rewards');
+            // Use default rewards if API call fails
+            this.rewards = CONFIG.FORTUNE_WHEEL.DEFAULT_REWARDS || [];
+            this.spins = 0;
+            throw error;
+        } finally {
+            ui.hideLoadingScreen();
         }
     }
 
@@ -239,6 +268,44 @@ class FortuneWheel {
         };
         
         return colors[rarity] || colors.common;
+    }
+
+    /**
+     * Update spins display in the UI
+     */
+    updateSpinsDisplay() {
+        try {
+            // Update spins remaining
+            if (this.spinsRemaining) {
+                this.spinsRemaining.textContent = this.spins || 0;
+            }
+            
+            // Update spin button state
+            if (this.spinBtn) {
+                if (this.spins > 0) {
+                    this.spinBtn.disabled = false;
+                    this.spinBtn.classList.remove('disabled');
+                } else {
+                    this.spinBtn.disabled = true;
+                    this.spinBtn.classList.add('disabled');
+                }
+            }
+            
+            // Update spin cost if available
+            if (this.spinCost) {
+                const cost = CONFIG.FORTUNE_WHEEL.SPIN_COST || 10;
+                this.spinCost.textContent = cost;
+            }
+            
+            // Render prizes list if available
+            if (this.wheelPrizes) {
+                this.renderPrizesList();
+            }
+            
+            console.log('Spins display updated successfully');
+        } catch (error) {
+            console.error('Error updating spins display:', error);
+        }
     }
 
     /**

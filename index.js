@@ -25,6 +25,46 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  
+  // Log request headers for authentication debugging
+  if (req.originalUrl.includes('/api/')) {
+    console.log(`Headers: ${JSON.stringify({
+      authorization: req.headers.authorization ? 'Bearer [REDACTED]' : 'None',
+      'content-type': req.headers['content-type'],
+      'user-agent': req.headers['user-agent']
+    })}`);
+  }
+  
+  // Capture response
+  const originalSend = res.send;
+  res.send = function(body) {
+    const duration = Date.now() - start;
+    const contentLength = body ? body.length : 0;
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} (${duration}ms, ${contentLength} bytes)`);
+    
+    // Log error responses for debugging
+    if (res.statusCode >= 400 && req.originalUrl.includes('/api/')) {
+      try {
+        const bodyObj = JSON.parse(body);
+        console.error(`Error response: ${JSON.stringify(bodyObj)}`);
+      } catch (e) {
+        // If not JSON or parsing fails
+        console.error(`Error response (non-JSON): ${body}`);
+      }
+    }
+    
+    return originalSend.call(this, body);
+  };
+  
+  next();
+});
+
+// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Initialize database
@@ -65,12 +105,33 @@ app.use('/api/leaderboard', require('./routes/leaderboard'));
 app.use('/api/profile', require('./routes/profile'));
 app.use('/api/fortune-wheel', require('./routes/fortuneWheel'));
 
-// Serve the main app
-app.get('/', (req, res) => {
+// Error handling for missing routes
+app.use('/api/*', (req, res) => {
+  console.error(`API endpoint not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    error: 'endpoint_not_found',
+    message: 'API endpoint not found',
+    path: req.originalUrl
+  });
+});
+
+// Serve the main app for all other routes (SPA support)
+app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({
+    error: 'server_error',
+    message: 'An unexpected error occurred on the server'
+  });
 });
 
 // Start the server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Web app URL: ${process.env.WEBAPP_URL || 'Not configured'}`);
+  console.log(`JWT Secret configured: ${process.env.JWT_SECRET ? 'Yes' : 'No - Authentication will fail!'}`);
 });

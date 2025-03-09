@@ -28,27 +28,45 @@ class Expedition {
 
     /**
      * Initialize expedition module
+     * @returns {Promise} - Promise that resolves when initialization is complete
      */
-    init() {
-        // Add event listeners
-        if (this.mineBtn) {
-            this.mineBtn.addEventListener('click', () => this.mineResources());
+    async init() {
+        try {
+            console.log('Initializing expedition module...');
+            
+            // Add event listeners
+            if (this.mineBtn) {
+                this.mineBtn.addEventListener('click', () => this.mineResources());
+            }
+            
+            if (this.exploreBtn) {
+                this.exploreBtn.addEventListener('click', () => this.exploreArea());
+            }
+            
+            if (this.returnBtn) {
+                this.returnBtn.addEventListener('click', () => this.returnToShip());
+            }
+            
+            if (this.startExpeditionBtn) {
+                this.startExpeditionBtn.addEventListener('click', () => this.startExpedition());
+            }
+            
+            // Check for active expedition on init
+            try {
+                await this.checkActiveExpedition();
+            } catch (expeditionError) {
+                console.error('Failed to check active expedition:', expeditionError);
+                // Continue initialization even if checking active expedition fails
+            }
+            
+            console.log('Expedition module initialized successfully');
+            return true;
+        } catch (error) {
+            console.error('Error initializing expedition module:', error);
+            // Don't throw here, just log the error
+            // This allows the game to continue loading even if expedition fails
+            return false;
         }
-        
-        if (this.exploreBtn) {
-            this.exploreBtn.addEventListener('click', () => this.exploreArea());
-        }
-        
-        if (this.returnBtn) {
-            this.returnBtn.addEventListener('click', () => this.returnToShip());
-        }
-        
-        if (this.startExpeditionBtn) {
-            this.startExpeditionBtn.addEventListener('click', () => this.startExpedition());
-        }
-        
-        // Check for active expedition on init
-        this.checkActiveExpedition();
     }
 
     /**

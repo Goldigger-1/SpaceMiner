@@ -419,6 +419,17 @@ class UI {
     }
 
     /**
+     * Show warning message
+     * @param {string} message - Warning message
+     */
+    showWarning(message) {
+        console.warn(message);
+        
+        // Show warning toast
+        this.showToast(message, 'warning', 5000);
+    }
+
+    /**
      * Show info message
      * @param {string} message - Info message
      */
@@ -427,17 +438,6 @@ class UI {
         
         // Show info toast
         this.showToast(message, 'info');
-    }
-
-    /**
-     * Show warning message
-     * @param {string} message - Warning message
-     */
-    showWarning(message) {
-        console.warn(message);
-        
-        // Show warning toast
-        this.showToast(message, 'warning');
     }
 
     /**

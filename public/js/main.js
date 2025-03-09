@@ -155,78 +155,142 @@ async function initializeGame() {
     try {
         console.log('Starting game initialization...');
         
-        // Initialize modules with detailed logging
+        // Initialize UI first as it's critical
         console.log('Initializing UI...');
         ui.init();
         console.log('UI initialized successfully');
         
-        try {
-            console.log('Initializing planets...');
-            await planets.init();
-            console.log('Planets initialized successfully');
-        } catch (planetsError) {
-            console.error('Failed to initialize planets:', planetsError);
-            throw new Error(`Planets initialization failed: ${planetsError.message}`);
+        // Track initialization status for each module
+        const initStatus = {
+            planets: false,
+            expedition: false,
+            inventory: false,
+            shop: false,
+            ranking: false,
+            profile: false,
+            fortuneWheel: false
+        };
+        
+        // Initialize all modules in parallel to speed up loading
+        const initPromises = [];
+        
+        // Planets initialization
+        initPromises.push(
+            planets.init()
+                .then(() => {
+                    console.log('Planets initialized successfully');
+                    initStatus.planets = true;
+                })
+                .catch(error => {
+                    console.error('Failed to initialize planets:', error);
+                    // Continue without throwing
+                })
+        );
+        
+        // Expedition initialization
+        initPromises.push(
+            expedition.init()
+                .then(() => {
+                    console.log('Expedition initialized successfully');
+                    initStatus.expedition = true;
+                })
+                .catch(error => {
+                    console.error('Failed to initialize expedition:', error);
+                    // Continue without throwing
+                })
+        );
+        
+        // Inventory initialization (critical)
+        initPromises.push(
+            inventory.init()
+                .then(() => {
+                    console.log('Inventory initialized successfully');
+                    initStatus.inventory = true;
+                })
+                .catch(error => {
+                    console.error('Failed to initialize inventory:', error);
+                    // Continue without throwing, use empty inventory
+                })
+        );
+        
+        // Shop initialization (critical)
+        initPromises.push(
+            shop.init()
+                .then(() => {
+                    console.log('Shop initialized successfully');
+                    initStatus.shop = true;
+                })
+                .catch(error => {
+                    console.error('Failed to initialize shop:', error);
+                    // Continue without throwing, use empty shop
+                })
+        );
+        
+        // Ranking initialization
+        initPromises.push(
+            ranking.init()
+                .then(() => {
+                    console.log('Ranking initialized successfully');
+                    initStatus.ranking = true;
+                })
+                .catch(error => {
+                    console.error('Failed to initialize ranking:', error);
+                    // Continue without throwing
+                })
+        );
+        
+        // Profile initialization (critical)
+        initPromises.push(
+            profile.init()
+                .then(() => {
+                    console.log('Profile initialized successfully');
+                    initStatus.profile = true;
+                })
+                .catch(error => {
+                    console.error('Failed to initialize profile:', error);
+                    // Continue without throwing, use default profile
+                })
+        );
+        
+        // Fortune wheel initialization
+        initPromises.push(
+            fortuneWheel.init()
+                .then(() => {
+                    console.log('Fortune wheel initialized successfully');
+                    initStatus.fortuneWheel = true;
+                })
+                .catch(error => {
+                    console.error('Failed to initialize fortune wheel:', error);
+                    // Continue without throwing
+                })
+        );
+        
+        // Wait for all initialization promises to settle (not necessarily resolve)
+        await Promise.allSettled(initPromises);
+        
+        // Check initialization status and log summary
+        console.log('Initialization status summary:');
+        for (const [module, status] of Object.entries(initStatus)) {
+            console.log(`- ${module}: ${status ? 'SUCCESS' : 'FAILED'}`);
         }
         
-        try {
-            console.log('Initializing expedition...');
-            await expedition.init();
-            console.log('Expedition initialized successfully');
-        } catch (expeditionError) {
-            console.error('Failed to initialize expedition:', expeditionError);
-            throw new Error(`Expedition initialization failed: ${expeditionError.message}`);
+        // Check if critical modules initialized
+        const criticalModules = ['inventory', 'shop', 'profile'];
+        const criticalFailures = criticalModules.filter(module => !initStatus[module]);
+        
+        if (criticalFailures.length > 0) {
+            console.warn(`Some critical modules failed to initialize: ${criticalFailures.join(', ')}`);
+            // Show a warning to the user but still continue
+            ui.showWarning(`Some game features may be limited due to connection issues. Please check your internet connection and try refreshing the page if you experience problems.`);
         }
         
-        try {
-            console.log('Initializing inventory...');
-            await inventory.init();
-            console.log('Inventory initialized successfully');
-        } catch (inventoryError) {
-            console.error('Failed to initialize inventory:', inventoryError);
-            throw new Error(`Inventory initialization failed: ${inventoryError.message}`);
-        }
-        
-        try {
-            console.log('Initializing shop...');
-            await shop.init();
-            console.log('Shop initialized successfully');
-        } catch (shopError) {
-            console.error('Failed to initialize shop:', shopError);
-            throw new Error(`Shop initialization failed: ${shopError.message}`);
-        }
-        
-        try {
-            console.log('Initializing ranking...');
-            await ranking.init();
-            console.log('Ranking initialized successfully');
-        } catch (rankingError) {
-            console.error('Failed to initialize ranking:', rankingError);
-            throw new Error(`Ranking initialization failed: ${rankingError.message}`);
-        }
-        
-        try {
-            console.log('Initializing profile...');
-            await profile.init();
-            console.log('Profile initialized successfully');
-        } catch (profileError) {
-            console.error('Failed to initialize profile:', profileError);
-            throw new Error(`Profile initialization failed: ${profileError.message}`);
-        }
-        
-        try {
-            console.log('Initializing fortune wheel...');
-            await fortuneWheel.init();
-            console.log('Fortune wheel initialized successfully');
-        } catch (fortuneWheelError) {
-            console.error('Failed to initialize fortune wheel:', fortuneWheelError);
-            throw new Error(`Fortune wheel initialization failed: ${fortuneWheelError.message}`);
-        }
-        
-        console.log('Game initialized successfully');
+        console.log('Game initialization completed');
         ui.hideLoadingScreen();
+        
+        // Show home tab
+        ui.showTab('home');
     } catch (error) {
-        console.error('Error initializing game:', error);
+        console.error('Unexpected error during game initialization:', error);
         ui.showError('Failed to initialize game: ' + error.message);
         ui.hideLoadingScreen();
     }

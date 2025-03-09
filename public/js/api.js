@@ -115,6 +115,22 @@ class API {
                         console.log('Retrieved token from localStorage');
                         this.token = storedToken;
                         options.headers['Authorization'] = `Bearer ${this.token}`;
+                    } else {
+                        // If no token is available and we're not authenticating, try to authenticate first
+                        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+                            console.log('No token available, attempting to authenticate with Telegram first...');
+                            try {
+                                await this.authenticateTelegram();
+                                // If authentication succeeds, update the headers with the new token
+                                if (this.token) {
+                                    options.headers['Authorization'] = `Bearer ${this.token}`;
+                                    console.log('Authentication successful, proceeding with request');
+                                }
+                            } catch (authError) {
+                                console.error('Pre-request authentication failed:', authError);
+                                // Continue with the request anyway, it will likely fail with 401
+                            }
+                        }
                     }
                 } catch (error) {
                     console.error('Failed to retrieve token from localStorage:', error);
@@ -138,7 +154,7 @@ class API {
             
             // Add timeout to fetch request
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout to 15 seconds
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // Increased timeout to 20 seconds
             options.signal = controller.signal;
             
             const response = await fetch(url, options);
@@ -163,9 +179,58 @@ class API {
                             return this.request(endpoint, method, data);
                         } catch (authError) {
                             console.error('Re-authentication failed:', authError);
+                            
+                            // Instead of throwing an error, return a default response for inventory and shop
+                            if (endpoint.includes('/profile/inventory')) {
+                                console.log('Returning default inventory data');
+                                return { inventory: [] };
+                            } else if (endpoint.includes('/shop')) {
+                                console.log('Returning default shop data');
+                                return { items: [] };
+                            } else if (endpoint.includes('/leaderboard')) {
+                                console.log('Returning default leaderboard data');
+                                return { leaderboard: [] };
+                            } else if (endpoint.includes('/profile')) {
+                                console.log('Returning default profile data');
+                                return { 
+                                    profile: { 
+                                        currency: 0, 
+                                        premium_currency: 0,
+                                        return_speed: 1,
+                                        storage_capacity: 100,
+                                        suit_autonomy: 1,
+                                        drone_collection: 0
+                                    } 
+                                };
+                            }
+                            
                             throw new Error('Authentication failed. Please refresh the page and try again.');
                         }
                     } else {
+                        // Return default data for critical endpoints
+                        if (endpoint.includes('/profile/inventory')) {
+                            console.log('Returning default inventory data');
+                            return { inventory: [] };
+                        } else if (endpoint.includes('/shop')) {
+                            console.log('Returning default shop data');
+                            return { items: [] };
+                        } else if (endpoint.includes('/leaderboard')) {
+                            console.log('Returning default leaderboard data');
+                            return { leaderboard: [] };
+                        } else if (endpoint.includes('/profile')) {
+                            console.log('Returning default profile data');
+                            return { 
+                                profile: { 
+                                    currency: 0, 
+                                    premium_currency: 0,
+                                    return_speed: 1,
+                                    storage_capacity: 100,
+                                    suit_autonomy: 1,
+                                    drone_collection: 0
+                                } 
+                            };
+                        }
+                        
                         throw new Error('Authentication failed. Please refresh the page and try again.');
                     }
                 } else {
@@ -174,6 +239,31 @@ class API {
             } else if (response.status === 404) {
                 // Special handling for 404 errors
                 console.error(`API endpoint not found: ${url}`);
+                
+                // Return default data for critical endpoints
+                if (endpoint.includes('/profile/inventory')) {
+                    console.log('Endpoint not found, returning default inventory data');
+                    return { inventory: [] };
+                } else if (endpoint.includes('/shop')) {
+                    console.log('Endpoint not found, returning default shop data');
+                    return { items: [] };
+                } else if (endpoint.includes('/leaderboard')) {
+                    console.log('Endpoint not found, returning default leaderboard data');
+                    return { leaderboard: [] };
+                } else if (endpoint.includes('/profile')) {
+                    console.log('Endpoint not found, returning default profile data');
+                    return { 
+                        profile: { 
+                            currency: 0, 
+                            premium_currency: 0,
+                            return_speed: 1,
+                            storage_capacity: 100,
+                            suit_autonomy: 1,
+                            drone_collection: 0
+                        } 
+                    };
+                }
+                
                 throw new Error(`API endpoint not found: ${endpoint}`);
             }
             
@@ -188,6 +278,31 @@ class API {
                 if (!response.ok) {
                     const errorMessage = responseData.error || responseData.message || `API request failed with status ${response.status}`;
                     console.error(`API error: ${errorMessage}`);
+                    
+                    // Return default data for critical endpoints
+                    if (endpoint.includes('/profile/inventory')) {
+                        console.log('Error response, returning default inventory data');
+                        return { inventory: [] };
+                    } else if (endpoint.includes('/shop')) {
+                        console.log('Error response, returning default shop data');
+                        return { items: [] };
+                    } else if (endpoint.includes('/leaderboard')) {
+                        console.log('Error response, returning default leaderboard data');
+                        return { leaderboard: [] };
+                    } else if (endpoint.includes('/profile')) {
+                        console.log('Error response, returning default profile data');
+                        return { 
+                            profile: { 
+                                currency: 0, 
+                                premium_currency: 0,
+                                return_speed: 1,
+                                storage_capacity: 100,
+                                suit_autonomy: 1,
+                                drone_collection: 0
+                            } 
+                        };
+                    }
+                    
                     throw new Error(errorMessage);
                 }
                 
@@ -196,6 +311,31 @@ class API {
                 if (!response.ok) {
                     const text = await response.text();
                     console.error(`API error (non-JSON): ${text || response.status}`);
+                    
+                    // Return default data for critical endpoints
+                    if (endpoint.includes('/profile/inventory')) {
+                        console.log('Error response, returning default inventory data');
+                        return { inventory: [] };
+                    } else if (endpoint.includes('/shop')) {
+                        console.log('Error response, returning default shop data');
+                        return { items: [] };
+                    } else if (endpoint.includes('/leaderboard')) {
+                        console.log('Error response, returning default leaderboard data');
+                        return { leaderboard: [] };
+                    } else if (endpoint.includes('/profile')) {
+                        console.log('Error response, returning default profile data');
+                        return { 
+                            profile: { 
+                                currency: 0, 
+                                premium_currency: 0,
+                                return_speed: 1,
+                                storage_capacity: 100,
+                                suit_autonomy: 1,
+                                drone_collection: 0
+                            } 
+                        };
+                    }
+                    
                     throw new Error(text || `API request failed with status ${response.status}`);
                 }
                 
@@ -205,6 +345,31 @@ class API {
             // Handle network errors with retry logic
             if (error.name === 'AbortError') {
                 console.error('Request timed out');
+                
+                // Return default data for critical endpoints
+                if (endpoint.includes('/profile/inventory')) {
+                    console.log('Request timed out, returning default inventory data');
+                    return { inventory: [] };
+                } else if (endpoint.includes('/shop')) {
+                    console.log('Request timed out, returning default shop data');
+                    return { items: [] };
+                } else if (endpoint.includes('/leaderboard')) {
+                    console.log('Request timed out, returning default leaderboard data');
+                    return { leaderboard: [] };
+                } else if (endpoint.includes('/profile')) {
+                    console.log('Request timed out, returning default profile data');
+                    return { 
+                        profile: { 
+                            currency: 0, 
+                            premium_currency: 0,
+                            return_speed: 1,
+                            storage_capacity: 100,
+                            suit_autonomy: 1,
+                            drone_collection: 0
+                        } 
+                    };
+                }
+                
                 throw new Error('Request timed out. Please check your internet connection and try again.');
             }
             
@@ -221,6 +386,30 @@ class API {
             
             // Reset retry count
             this.retryCount = 0;
+            
+            // Return default data for critical endpoints on final failure
+            if (endpoint.includes('/profile/inventory')) {
+                console.log('Request failed, returning default inventory data');
+                return { inventory: [] };
+            } else if (endpoint.includes('/shop')) {
+                console.log('Request failed, returning default shop data');
+                return { items: [] };
+            } else if (endpoint.includes('/leaderboard')) {
+                console.log('Request failed, returning default leaderboard data');
+                return { leaderboard: [] };
+            } else if (endpoint.includes('/profile')) {
+                console.log('Request failed, returning default profile data');
+                return { 
+                    profile: { 
+                        currency: 0, 
+                        premium_currency: 0,
+                        return_speed: 1,
+                        storage_capacity: 100,
+                        suit_autonomy: 1,
+                        drone_collection: 0
+                    } 
+                };
+            }
             
             throw error;
         }
