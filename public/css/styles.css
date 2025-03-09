@@ -1,0 +1,758 @@
+/* Space Miner - Main Styles */
+:root {
+  --primary-color: #4a6cff;
+  --secondary-color: #7d3cff;
+  --accent-color: #00e5ff;
+  --background-color: #0a0e1f;
+  --card-bg-color: #141c33;
+  --text-color: #ffffff;
+  --text-secondary: #a9b5d9;
+  --success-color: #00e676;
+  --warning-color: #ffea00;
+  --danger-color: #ff3d71;
+  --border-radius: 8px;
+  --nav-height: 60px;
+  --tab-transition: 0.3s ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+#app {
+  max-width: 100%;
+  margin: 0 auto;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Loading Screen */
+#loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--background-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  transition: opacity 0.5s ease-out;
+}
+
+.loading-container {
+  text-align: center;
+  width: 80%;
+  max-width: 400px;
+}
+
+.spaceship-loading {
+  margin-bottom: 30px;
+}
+
+.spaceship {
+  font-size: 50px;
+  color: var(--accent-color);
+  animation: rocket-launch 2s infinite;
+}
+
+.loading-text {
+  margin-top: 15px;
+  font-size: 18px;
+  color: var(--text-secondary);
+}
+
+.loading-progress {
+  width: 100%;
+  height: 10px;
+  background-color: var(--card-bg-color);
+  border-radius: 5px;
+  margin: 20px 0;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+  border-radius: 5px;
+  transition: width 0.3s ease-in-out;
+}
+
+#loading-fact {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Navigation */
+.nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: var(--card-bg-color);
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0;
+  z-index: 100;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 12px;
+  padding: 5px 0;
+  transition: color 0.3s;
+}
+
+.nav-button i {
+  font-size: 20px;
+  margin-bottom: 5px;
+}
+
+.nav-button.active {
+  color: var(--accent-color);
+}
+
+.tab-content {
+  padding: 20px;
+  padding-bottom: 80px; /* Space for nav bar */
+  min-height: 100vh;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Cards and Containers */
+.card {
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  padding: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 10px;
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+/* Buttons */
+.action-button {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: var(--border-radius);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(74, 108, 255, 0.3);
+}
+
+.action-button:active {
+  transform: translateY(0);
+}
+
+.action-button i {
+  margin-right: 8px;
+}
+
+.secondary-button {
+  background-color: transparent;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+}
+
+.secondary-button:hover {
+  background-color: rgba(74, 108, 255, 0.1);
+}
+
+.danger-button {
+  background: linear-gradient(135deg, #ff3d71, #ff5c8a);
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+/* Home Tab */
+.spaceship-overview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.spaceship-image {
+  width: 150px;
+  height: 150px;
+  margin-bottom: 20px;
+}
+
+.spaceship-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.spaceship-stats {
+  width: 100%;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-label {
+  color: var(--text-secondary);
+}
+
+.stat-value {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.currency-display {
+  display: flex;
+  justify-content: space-around;
+  margin: 20px 0;
+}
+
+.currency-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.currency-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.currency-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 5px;
+}
+
+/* Expedition Tab */
+.planet-selection {
+  margin-bottom: 30px;
+}
+
+.planets-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.planet-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.planet-card:hover {
+  transform: translateY(-5px);
+}
+
+.planet-image {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.planet-info {
+  padding: 10px;
+  background-color: var(--card-bg-color);
+}
+
+.planet-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.planet-difficulty {
+  display: flex;
+  margin-bottom: 5px;
+}
+
+.difficulty-star {
+  color: var(--warning-color);
+  font-size: 12px;
+  margin-right: 2px;
+}
+
+.planet-description {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Inventory Tab */
+.inventory-section {
+  margin-bottom: 30px;
+}
+
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.resource-item {
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  padding: 10px;
+  text-align: center;
+  position: relative;
+}
+
+.resource-image {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 10px;
+}
+
+.resource-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.resource-name {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.resource-quantity {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.resource-value {
+  font-size: 12px;
+  color: var(--success-color);
+  margin-top: 5px;
+}
+
+/* Shop Tab */
+.shop-section {
+  margin-bottom: 30px;
+}
+
+.shop-items-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.shop-item {
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  padding: 15px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.shop-item-image {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 15px;
+}
+
+.shop-item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.shop-item-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  text-align: center;
+}
+
+.shop-item-description {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  text-align: center;
+  flex-grow: 1;
+}
+
+.shop-item-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+/* Profile Tab */
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.profile-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 15px;
+  border: 3px solid var(--accent-color);
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-name {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.profile-id {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 15px;
+}
+
+.profile-stats {
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+.profile-stat-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.profile-achievements {
+  margin-bottom: 30px;
+}
+
+.achievement-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.achievement-item {
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  padding: 10px;
+  text-align: center;
+  position: relative;
+}
+
+.achievement-icon {
+  font-size: 24px;
+  color: var(--accent-color);
+  margin-bottom: 10px;
+}
+
+.achievement-locked .achievement-icon {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.achievement-name {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.achievement-description {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+/* Fortune Wheel Tab */
+.fortune-wheel-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.wheel-spinner-container {
+  width: 300px;
+  height: 300px;
+  position: relative;
+  margin: 0 auto;
+}
+
+#wheel-spinner {
+  display: block;
+  margin: 0 auto;
+}
+
+.wheel-canvas-container {
+  width: 280px;
+  height: 280px;
+  position: relative;
+  margin: 20px 0;
+}
+
+.wheel-pointer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  background-color: var(--accent-color);
+  border-radius: 50%;
+  z-index: 10;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+}
+
+.wheel-pointer:before {
+  content: '';
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 15px solid var(--accent-color);
+}
+
+.wheel-info {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.wheel-prizes {
+  margin-top: 30px;
+}
+
+.prize-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.prize-item {
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  padding: 10px;
+  text-align: center;
+}
+
+.prize-icon {
+  font-size: 24px;
+  color: var(--warning-color);
+  margin-bottom: 10px;
+}
+
+.prize-name {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.prize-description {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.wheel-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.spin-cost {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.spins-remaining {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 10px;
+}
+
+#spins-remaining {
+  font-weight: bold;
+  color: var(--accent-color);
+}
+
+/* Modals */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: var(--card-bg-color);
+  border-radius: var(--border-radius);
+  width: 90%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  animation: modal-appear 0.3s ease-out;
+}
+
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.close-modal {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  z-index: 10;
+}
+
+.close-modal:hover {
+  color: var(--text-color);
+}
+
+/* Animations */
+@keyframes rocket-launch {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 480px) {
+  .planets-container,
+  .resources-grid,
+  .shop-items-grid,
+  .achievement-list,
+  .prize-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .planets-container,
+  .resources-grid,
+  .shop-items-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .achievement-list,
+  .prize-list {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
