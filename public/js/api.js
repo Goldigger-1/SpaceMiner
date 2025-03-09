@@ -449,7 +449,22 @@ class API {
      * Get user inventory
      */
     async getInventory() {
-        return this.request('/profile/inventory');
+        try {
+            console.log('Fetching inventory...');
+            const response = await this.request('/profile/inventory');
+            console.log('Inventory response:', response);
+            
+            // Check if the response has the expected structure
+            if (response && response.inventory) {
+                return response.inventory;
+            } else {
+                console.error('Invalid inventory response structure:', response);
+                return [];
+            }
+        } catch (error) {
+            console.error('Error fetching inventory:', error);
+            throw error;
+        }
     }
 
     /**
@@ -469,7 +484,34 @@ class API {
      * @param {string} category - Item category
      */
     async getShopItems(category) {
-        return this.request(`/shop?category=${category}`);
+        try {
+            console.log(`Fetching shop items for category: ${category}...`);
+            const response = await this.request(`/shop?category=${category}`);
+            console.log('Shop items response:', response);
+            
+            // Check if the response has the expected structure
+            if (response && response.items) {
+                // If items are grouped by type, return the items for the requested category
+                if (response.items[category]) {
+                    return response.items[category];
+                } 
+                // If all items are returned, filter by category
+                else if (Array.isArray(response.items)) {
+                    return response.items.filter(item => item.type === category);
+                }
+                // If items are grouped but category doesn't exist
+                else if (typeof response.items === 'object') {
+                    console.warn(`No items found for category: ${category}`);
+                    return [];
+                }
+            }
+            
+            console.error('Invalid shop items response structure:', response);
+            return [];
+        } catch (error) {
+            console.error(`Error fetching shop items for category ${category}:`, error);
+            throw error;
+        }
     }
 
     /**

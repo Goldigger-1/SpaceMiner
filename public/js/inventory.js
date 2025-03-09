@@ -38,13 +38,27 @@ class Inventory {
         try {
             ui.showLoadingScreen();
             
-            this.inventoryItems = await api.getInventory();
-            this.renderInventory();
+            console.log('Loading inventory items...');
+            try {
+                this.inventoryItems = await api.getInventory();
+                console.log(`Received ${this.inventoryItems ? this.inventoryItems.length : 0} inventory items`);
+                
+                // Ensure inventoryItems is always an array
+                if (!Array.isArray(this.inventoryItems)) {
+                    console.warn('Inventory items is not an array, setting to empty array');
+                    this.inventoryItems = [];
+                }
+            } catch (apiError) {
+                console.error('API error loading inventory:', apiError);
+                this.inventoryItems = [];
+                ui.showError(`Failed to load inventory: ${apiError.message || 'Unknown error'}`);
+            }
             
+            this.renderInventory();
             ui.hideLoadingScreen();
         } catch (error) {
             ui.hideLoadingScreen();
-            console.error('Error loading inventory:', error);
+            console.error('Error in loadInventory:', error);
             ui.showError('Failed to load inventory');
         }
     }
@@ -53,14 +67,15 @@ class Inventory {
      * Render inventory items
      */
     renderInventory() {
-        if (!this.inventoryGrid) return;
+        if (!this.inventoryGrid) {
+            console.error('Inventory grid container not found');
+            return;
+        }
         
         this.inventoryGrid.innerHTML = '';
         
-        // Filter items based on current filter
-        const filteredItems = this.filterItems(this.inventoryItems, this.currentFilter);
-        
-        if (filteredItems.length === 0) {
+        // Ensure we have valid inventory items
+        if (!this.inventoryItems || this.inventoryItems.length === 0) {
             const emptyMessage = document.createElement('div');
             emptyMessage.className = 'empty-inventory';
             emptyMessage.textContent = this.currentFilter === 'all' ? 
@@ -71,26 +86,61 @@ class Inventory {
             return;
         }
         
-        // Group items by type
-        const groupedItems = this.groupItemsByType(filteredItems);
-        
-        // Render grouped items
-        Object.entries(groupedItems).forEach(([type, items]) => {
-            const typeHeading = document.createElement('h3');
-            typeHeading.className = 'inventory-type-heading';
-            typeHeading.textContent = this.capitalizeFirstLetter(type);
-            this.inventoryGrid.appendChild(typeHeading);
+        try {
+            // Filter items based on current filter
+            const filteredItems = this.filterItems(this.inventoryItems, this.currentFilter);
             
-            const itemsContainer = document.createElement('div');
-            itemsContainer.className = 'inventory-items-container';
+            if (filteredItems.length === 0) {
+                const emptyMessage = document.createElement('div');
+                emptyMessage.className = 'empty-inventory';
+                emptyMessage.textContent = this.currentFilter === 'all' ? 
+                    'Your inventory is empty. Go on expeditions to collect resources!' : 
+                    `You don't have any ${this.currentFilter} resources.`;
+                
+                this.inventoryGrid.appendChild(emptyMessage);
+                return;
+            }
             
-            items.forEach(item => {
-                const itemElement = this.createItemElement(item);
-                itemsContainer.appendChild(itemElement);
+            // Group items by type
+            const groupedItems = this.groupItemsByType(filteredItems);
+            
+            // Render grouped items
+            Object.entries(groupedItems).forEach(([type, items]) => {
+                try {
+                    const typeHeading = document.createElement('h3');
+                    typeHeading.className = 'inventory-type-heading';
+                    typeHeading.textContent = this.capitalizeFirstLetter(type);
+                    this.inventoryGrid.appendChild(typeHeading);
+                    
+                    const itemsContainer = document.createElement('div');
+                    itemsContainer.className = 'inventory-items-container';
+                    
+                    items.forEach(item => {
+                        if (!item) {
+                            console.warn('Undefined item in inventory items array');
+                            return;
+                        }
+                        
+                        try {
+                            const itemElement = this.createItemElement(item);
+                            itemsContainer.appendChild(itemElement);
+                        } catch (itemError) {
+                            console.error('Error creating inventory item element:', itemError, item);
+                        }
+                    });
+                    
+                    this.inventoryGrid.appendChild(itemsContainer);
+                } catch (typeError) {
+                    console.error(`Error rendering inventory type ${type}:`, typeError);
+                }
             });
-            
-            this.inventoryGrid.appendChild(itemsContainer);
-        });
+        } catch (renderError) {
+            console.error('Error rendering inventory:', renderError);
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'error-message';
+            errorMessage.textContent = 'Error rendering inventory. Please try again.';
+            this.inventoryGrid.appendChild(errorMessage);
+        }
     }
 
     /**

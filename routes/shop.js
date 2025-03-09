@@ -33,7 +33,7 @@ router.get('/my-items', verifyToken, async (req, res) => {
             JOIN shop_items si ON uu.item_id = si.id
             WHERE uu.user_id = ? AND uu.active = 1
             ORDER BY uu.purchase_date DESC
-        `, [req.userId]);
+        `, [req.user.id]);
         
         res.json({ items: userItems });
     } catch (error) {
@@ -59,7 +59,7 @@ router.post('/purchase', verifyToken, async (req, res) => {
         }
         
         // Get user profile
-        const user = await db.get('SELECT * FROM users WHERE id = ?', [req.userId]);
+        const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
         
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
@@ -82,7 +82,7 @@ router.post('/purchase', verifyToken, async (req, res) => {
                 UPDATE users
                 SET premium_currency = premium_currency - ?
                 WHERE id = ?
-            `, [item.price, req.userId]);
+            `, [item.price, req.user.id]);
         } else {
             // Regular in-game currency
             if (user.currency < item.price) {
@@ -94,7 +94,7 @@ router.post('/purchase', verifyToken, async (req, res) => {
                 UPDATE users
                 SET currency = currency - ?
                 WHERE id = ?
-            `, [item.price, req.userId]);
+            `, [item.price, req.user.id]);
         }
         
         // Calculate expiry date for temporary items
@@ -114,10 +114,10 @@ router.post('/purchase', verifyToken, async (req, res) => {
         const result = await db.run(`
             INSERT INTO user_upgrades (user_id, item_id, purchase_date, expiry_date, active)
             VALUES (?, ?, ?, ?, 1)
-        `, [req.userId, item_id, new Date().toISOString(), expiryDate ? expiryDate.toISOString() : null]);
+        `, [req.user.id, item_id, new Date().toISOString(), expiryDate ? expiryDate.toISOString() : null]);
         
         // Get updated user currency
-        const updatedUser = await db.get('SELECT currency, premium_currency FROM users WHERE id = ?', [req.userId]);
+        const updatedUser = await db.get('SELECT currency, premium_currency FROM users WHERE id = ?', [req.user.id]);
         
         res.json({ 
             success: true,
@@ -157,7 +157,7 @@ router.post('/verify-purchase', verifyToken, async (req, res) => {
                 UPDATE users
                 SET premium_currency = premium_currency + ?
                 WHERE id = ?
-            `, [item.boost_value, req.userId]);
+            `, [item.boost_value, req.user.id]);
         } else {
             // Add item to user's inventory
             const expiryDate = item.type === 'season_pass' ? 
@@ -166,11 +166,11 @@ router.post('/verify-purchase', verifyToken, async (req, res) => {
             await db.run(`
                 INSERT INTO user_upgrades (user_id, item_id, purchase_date, expiry_date, active)
                 VALUES (?, ?, ?, ?, 1)
-            `, [req.userId, product_id, new Date().toISOString(), expiryDate ? expiryDate.toISOString() : null]);
+            `, [req.user.id, product_id, new Date().toISOString(), expiryDate ? expiryDate.toISOString() : null]);
         }
         
         // Get updated user data
-        const user = await db.get('SELECT currency, premium_currency FROM users WHERE id = ?', [req.userId]);
+        const user = await db.get('SELECT currency, premium_currency FROM users WHERE id = ?', [req.user.id]);
         
         res.json({ 
             success: true,

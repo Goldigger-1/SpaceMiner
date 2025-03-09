@@ -46,13 +46,22 @@ class Shop {
             ui.showLoadingScreen();
             
             this.currentCategory = category;
-            this.items = await api.getShopItems(category);
-            this.renderShopItems();
+            console.log(`Loading shop items for category: ${category}`);
             
+            try {
+                this.items = await api.getShopItems(category);
+                console.log(`Received ${this.items.length} items for category ${category}`);
+            } catch (apiError) {
+                console.error(`API error loading shop items for ${category}:`, apiError);
+                this.items = [];
+                ui.showError(`Failed to load shop items: ${apiError.message || 'Unknown error'}`);
+            }
+            
+            this.renderShopItems();
             ui.hideLoadingScreen();
         } catch (error) {
             ui.hideLoadingScreen();
-            console.error('Error loading shop items:', error);
+            console.error('Error in loadShopItems:', error);
             ui.showError('Failed to load shop items');
         }
     }
@@ -61,11 +70,14 @@ class Shop {
      * Render shop items
      */
     renderShopItems() {
-        if (!this.shopItems) return;
+        if (!this.shopItems) {
+            console.error('Shop items container not found');
+            return;
+        }
         
         this.shopItems.innerHTML = '';
         
-        if (this.items.length === 0) {
+        if (!this.items || this.items.length === 0) {
             const emptyMessage = document.createElement('div');
             emptyMessage.className = 'empty-shop';
             emptyMessage.textContent = `No items available in the ${this.currentCategory} category.`;
@@ -74,10 +86,27 @@ class Shop {
             return;
         }
         
-        this.items.forEach(item => {
-            const itemElement = this.createItemElement(item);
-            this.shopItems.appendChild(itemElement);
-        });
+        try {
+            this.items.forEach(item => {
+                if (!item) {
+                    console.warn('Undefined item in shop items array');
+                    return;
+                }
+                
+                try {
+                    const itemElement = this.createItemElement(item);
+                    this.shopItems.appendChild(itemElement);
+                } catch (itemError) {
+                    console.error('Error creating item element:', itemError, item);
+                }
+            });
+        } catch (renderError) {
+            console.error('Error rendering shop items:', renderError);
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'error-message';
+            errorMessage.textContent = 'Error rendering shop items. Please try again.';
+            this.shopItems.appendChild(errorMessage);
+        }
     }
 
     /**
