@@ -226,8 +226,6 @@ class API {
                 telegramUser = {
                     telegram_id: user.id.toString(),
                     username: user.username || `user_${user.id}`,
-                    first_name: user.first_name || '',
-                    last_name: user.last_name || '',
                     auth_date: Math.floor(Date.now() / 1000)
                 };
                 

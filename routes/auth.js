@@ -8,7 +8,7 @@ const { verifyToken } = require('../middleware/auth');
 const authenticateTelegram = async (req, res, next) => {
   try {
     console.log('Telegram authentication request received:', req.body);
-    const { telegram_id, username, first_name, last_name, auth_date } = req.body;
+    const { telegram_id, username, auth_date } = req.body;
     
     // Validate required fields
     if (!telegram_id) {
@@ -25,8 +25,8 @@ const authenticateTelegram = async (req, res, next) => {
     if (!user) {
       console.log(`Creating new user for Telegram ID: ${telegram_id}`);
       const result = await runQuery(
-        'INSERT INTO users (telegram_id, username, first_name, last_name, last_login) VALUES (?, ?, ?, ?, ?)',
-        [telegram_id, username || `user_${telegram_id}`, first_name || '', last_name || '', new Date().toISOString()]
+        'INSERT INTO users (telegram_id, username, last_login) VALUES (?, ?, ?)',
+        [telegram_id, username || `user_${telegram_id}`, new Date().toISOString()]
       );
       
       user = await getOne('SELECT * FROM users WHERE id = ?', [result.lastID]);
@@ -35,11 +35,9 @@ const authenticateTelegram = async (req, res, next) => {
       // Update user information and last login
       console.log(`Updating existing user: ${user.id} (Telegram ID: ${telegram_id})`);
       await runQuery(
-        'UPDATE users SET username = ?, first_name = ?, last_name = ?, last_login = ? WHERE id = ?',
+        'UPDATE users SET username = ?, last_login = ? WHERE id = ?',
         [
           username || user.username || `user_${telegram_id}`, 
-          first_name || user.first_name || '', 
-          last_name || user.last_name || '', 
           new Date().toISOString(), 
           user.id
         ]
